@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InstrumenPoche Web — Instruments virtuels de géométrie</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== Barre d'instruments (gauche) ===== -->
+  <aside id="toolbar" aria-label="Barre d'instruments et d'outils">
+    <div class="tb-title">Instruments</div>
+    <button type="button" class="tb-btn inst-btn" data-inst="crayon"       title="Afficher/masquer le crayon">✎<span>Crayon</span></button>
+    <button type="button" class="tb-btn inst-btn" data-inst="compas"       title="Afficher/masquer le compas">◠<span>Compas</span></button>
+    <button type="button" class="tb-btn inst-btn" data-inst="regle"        title="Afficher/masquer la règle">▭<span>Règle</span></button>
+    <button type="button" class="tb-btn inst-btn" data-inst="equerre"      title="Afficher/masquer l'équerre">◺<span>Équerre</span></button>
+    <button type="button" class="tb-btn inst-btn" data-inst="rapporteur"   title="Afficher/masquer le rapporteur">◠<span>Rappor.</span></button>
+    <button type="button" class="tb-btn inst-btn" data-inst="regleEquerre" title="Afficher/masquer la règle-équerre">⊾<span>Règle-éq.</span></button>
+
+    <div class="tb-title">Outils</div>
+    <button type="button" class="tb-btn tool-btn active" data-tool="move"    title="Déplacer et manipuler les instruments">✥<span>Manipuler</span></button>
+    <button type="button" class="tb-btn tool-btn" data-tool="segment" title="Tracer un segment : cliquez-glissez">╱<span>Segment</span></button>
+    <button type="button" class="tb-btn tool-btn" data-tool="droite"  title="Tracer une droite : cliquez-glissez">↔<span>Droite</span></button>
+    <button type="button" class="tb-btn tool-btn" data-tool="polygone" title="Tracer un polygone : cliquez les sommets (3 min) puis refermez">⬠<span>Polygone</span></button>
+    <button type="button" class="tb-btn tool-btn" data-tool="point"   title="Placer un point nommé">•<span>Point</span></button>
+    <button type="button" class="tb-btn tool-btn" data-tool="milieu"  title="Placer le milieu d'un segment">◆<span>Milieu</span></button>
+    <button type="button" class="tb-btn tool-btn" data-tool="texte"   title="Insérer un texte">T<span>Texte</span></button>
+    <button type="button" class="tb-btn tool-btn" data-tool="gomme"   title="Effacer un objet (cliquer dessus)">⌫<span>Gomme</span></button>
+
+    <div class="tb-title">Feuille</div>
+    <select id="gridSelect" title="Quadrillage de la feuille">
+      <option value="blanc">Blanc</option>
+      <option value="carreaux" selected>Carreaux</option>
+      <option value="seyes">Seyès</option>
+      <option value="millimetre">Millimétré</option>
+      <option value="repere">Repère</option>
+    </select>
+    <label class="tb-check"><input type="checkbox" id="snapChk"> Magnétisme</label>
+
+    <div class="tb-title">Exercice</div>
+    <button type="button" class="tb-btn" id="imgBtn" title="Importer une image d'exercice en fond (ou Ctrl+V pour coller une capture)">🖼<span>Image fond</span></button>
+    <input type="file" id="imgFile" accept="image/*" class="hidden">
+    <label class="tb-check" id="imgOpRow" style="display:none">Opacité
+      <input type="range" id="imgOpacity" min="0.15" max="1" step="0.05" value="0.65">
+    </label>
+    <button type="button" class="tb-btn hidden" id="imgRemove" title="Retirer l'image de fond">✕<span>Retirer img.</span></button>
+
+    <div class="tb-title">Édition</div>
+    <button type="button" class="tb-btn" id="undoBtn"  title="Annuler la dernière action (Ctrl+Z)">↶<span>Annuler</span></button>
+    <button type="button" class="tb-btn" id="clearBtn" title="Tout effacer">✕<span>Tout effacer</span></button>
+  </aside>
+
+  <!-- ===== Zone centrale ===== -->
+  <main id="center">
+    <div id="contextBar"><span id="ctxInfo">Sélectionnez un instrument ou un outil.</span><span id="ctxActions"></span></div>
+    <div id="paperWrap">
+      <canvas id="paper"></canvas>
+      <div id="playOverlay" class="hidden">Mode lecture — construction en cours…</div>
+      <div id="stepCaption" class="hidden"></div>
+    </div>
+
+    <!-- ===== Lecteur (bas) ===== -->
+    <div id="playerBar">
+      <button type="button" id="btnPlay"  title="Lire la construction">▶</button>
+      <button type="button" id="btnPause" title="Pause" disabled>⏸</button>
+      <button type="button" id="btnPrev"  title="Étape précédente">⏮</button>
+      <button type="button" id="btnNext"  title="Étape suivante">⏭</button>
+      <input type="range" id="playSlider" min="0" max="0" value="0" step="1">
+      <select id="speedSel" title="Vitesse de lecture">
+        <option value="0.5">×0,5</option>
+        <option value="1" selected>×1</option>
+        <option value="2">×2</option>
+        <option value="4">×4</option>
+      </select>
+      <label><input type="checkbox" id="loopChk"> Boucle</label>
+      <button type="button" id="btnExitPlay" class="hidden" title="Revenir à l'édition">⏏ Éditer</button>
+      <span id="stepCounter">0 / 0 étapes</span>
+    </div>
+  </main>
+
+  <!-- ===== Panneau script (droite) ===== -->
+  <aside id="scriptPanel" aria-label="Panneau du script de construction">
+    <div class="tb-title">Script de construction</div>
+    <div class="sp-row">
+      <button type="button" id="exportBtn" title="Télécharger le script (.json)">Exporter</button>
+      <button type="button" id="importBtn" title="Charger un script (.json)">Importer</button>
+      <input type="file" id="importFile" accept=".json,.xml,application/json" class="hidden">
+    </div>
+    <div class="tb-title">Bibliothèque</div>
+    <ul id="biblioList"></ul>
+    <button type="button" id="saveBiblioBtn" title="Ajouter la construction courante à la bibliothèque">Enregistrer dans la bibliothèque</button>
+    <textarea id="scriptArea" spellcheck="false" placeholder="Le script JSON des actions enregistrées apparaît ici. Vous pouvez le modifier puis cliquer « Appliquer »."></textarea>
+    <button type="button" id="applyScriptBtn" title="Reconstruire la figure depuis le script">Appliquer le script</button>
+    <div id="scriptMsg"></div>
+    <div class="help">
+      <b>Aide rapide</b>
+      <ul>
+        <li>Tracer un segment ou une droite : outils « Segment »/« Droite » (cliquez-glissez), ou glissez le long d'un bord orange de la règle ou de l'équerre.</li>
+        <li>« Polygone » : cliquez chaque sommet (3 minimum), puis refermez en cliquant le 1er sommet ou en double-cliquant. « Milieu » : cliquez un segment pour marquer son milieu.</li>
+        <li>Exercice : « Image fond » importe la photo d'un énoncé, ou collez une capture avec Ctrl+V ; ajustez son opacité et construisez par-dessus.</li>
+        <li>Attrapez le crayon et glissez-le : il écrit en se déplaçant ; près d'un bord, il trace droit tout seul.</li>
+        <li>Déplacer : avec « Manipuler », glissez n'importe quel tracé (point, texte, segment, polygone…) pour le repositionner.</li>
+        <li>Instruments : glissez le corps pour déplacer, poignée bleue pour pivoter, poignée violette pour coulisser.</li>
+        <li>Compas : réglez l'ouverture en glissant la pointe verte ou en saisissant la valeur en cm, puis mode « Tracer un arc » pour dessiner.</li>
+        <li>Toutes vos actions sont enregistrées : le bouton ▶ rejoue la construction comme un film.</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<script src="js/render.js"></script>
+<script src="js/examples.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

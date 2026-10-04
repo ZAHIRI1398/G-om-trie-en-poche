@@ -1,0 +1,107 @@
+/* ===== InstrumenPoche Web ===== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: "Segoe UI", Arial, sans-serif; font-size: 14px; }
+#app { display: flex; height: 100vh; overflow: hidden; background: #d7dde4; }
+
+/* ----- Barre d'instruments ----- */
+#toolbar {
+  width: 108px; flex: none; background: #2f3b4c; color: #e8edf2;
+  display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; overflow-y: auto;
+}
+.tb-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: #9fb0c3; margin: 8px 2px 2px; border-bottom: 1px solid #46566b; padding-bottom: 2px;
+}
+.tb-btn {
+  display: flex; align-items: center; gap: 7px; width: 100%;
+  background: #3c4b60; color: #e8edf2; border: 2px solid transparent; border-radius: 7px;
+  padding: 6px 8px; font-size: 15px; cursor: pointer; text-align: left;
+}
+.tb-btn span { font-size: 12px; }
+.tb-btn:hover { background: #4a5c75; }
+.tb-btn.active { border-color: #e74c3c; background: #51637e; }   /* cerclé de rouge comme IEP */
+.tb-btn:disabled { opacity: .4; cursor: default; }
+#gridSelect, #speedSel, #exampleSel {
+  width: 100%; padding: 4px; border-radius: 5px; background: #3c4b60; color: #e8edf2; border: 1px solid #55677f;
+}
+.tb-check { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 2px; }
+
+/* ----- Centre ----- */
+#center { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#contextBar {
+  flex: none; display: flex; align-items: center; gap: 14px; min-height: 38px;
+  background: #f4f6f8; border-bottom: 1px solid #c3ccd4; padding: 4px 12px;
+}
+#ctxInfo { color: #445; font-size: 13px; }
+#ctxActions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#ctxActions button {
+  padding: 3px 10px; border: 1px solid #8fa1b3; border-radius: 5px;
+  background: #fff; cursor: pointer; font-size: 12px;
+}
+#ctxActions button:hover { background: #eef3f8; }
+#ctxActions button.on { background: #ffe9c9; border-color: #d99a2b; }
+#ctxActions .ctx-angle { font-weight: bold; color: #8a4b00; min-width: 70px; }
+
+#paperWrap { flex: 1; position: relative; overflow: hidden; }
+#paper { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+#playOverlay {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(20,30,45,.85); color: #fff; padding: 6px 16px; border-radius: 20px;
+  font-size: 13px; pointer-events: none;
+}
+#stepCaption {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  max-width: 72%; background: rgba(20,30,45,.88); color: #fff;
+  padding: 8px 18px; border-radius: 8px; font-size: 14px; text-align: center;
+  pointer-events: none; font-style: italic;
+}
+.hidden { display: none !important; }
+
+/* ----- Lecteur ----- */
+#playerBar {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  background: #26303e; color: #dfe6ee; padding: 7px 12px;
+}
+#playerBar button {
+  width: 36px; height: 30px; font-size: 15px; border: none; border-radius: 6px;
+  background: #3c4b60; color: #fff; cursor: pointer;
+}
+#playerBar button:hover:not(:disabled) { background: #4d607a; }
+#playerBar button:disabled { opacity: .35; cursor: default; }
+#btnExitPlay { width: auto; padding: 0 12px; background: #8a4b00; }
+#playSlider { flex: 1; accent-color: #e67e22; }
+#playerBar label { font-size: 12px; display: flex; gap: 4px; align-items: center; }
+#stepCounter { font-size: 12px; color: #9fb0c3; min-width: 80px; text-align: right; }
+
+/* ----- Panneau script ----- */
+#scriptPanel {
+  width: 300px; flex: none; background: #eef1f5; border-left: 1px solid #c3ccd4;
+  display: flex; flex-direction: column; padding: 8px; gap: 6px; overflow-y: auto;
+}
+#scriptPanel .tb-title { color: #5a6b7d; border-color: #c3ccd4; }
+.sp-row { display: flex; gap: 6px; }
+.sp-row button, #applyScriptBtn {
+  flex: 1; padding: 6px; border: 1px solid #8fa1b3; border-radius: 6px;
+  background: #fff; cursor: pointer; font-size: 12px;
+}
+.sp-row button:hover, #applyScriptBtn:hover { background: #e3ebf3; }
+#scriptArea {
+  flex: 1; min-height: 120px; resize: none; font-family: Consolas, monospace; font-size: 11px;
+  padding: 6px; border: 1px solid #b8c3cd; border-radius: 6px; background: #fbfdff;
+}
+#scriptMsg { font-size: 11px; min-height: 16px; color: #a33; }
+#scriptMsg { font-size: 11px; min-height: 16px; color: #a33; }
+#biblioList {
+  flex: none;                       /* ne pas rétrécir dans le panneau flex */
+  list-style: none; font-size: 12.5px; max-height: 230px; overflow-y: auto;
+  background: #fff; border: 1px solid #d3dbe2; border-radius: 6px; padding: 6px 8px;
+}
+#biblioList li { padding: 2px 0; }
+#biblioList .bib-head { font-weight: bold; color: #5a6b7d; margin-top: 4px; }
+.bib-link { color: #1a5fb4; text-decoration: none; cursor: pointer; }
+.bib-link:hover { text-decoration: underline; }
+.bib-del { float: right; border: none; background: none; color: #a33; cursor: pointer; font-size: 13px; padding: 0 2px; }
+.bib-del:hover { color: #c00; }
+.help { font-size: 11.5px; color: #445; background: #fff; border: 1px solid #d3dbe2; border-radius: 6px; padding: 8px; }
+.help ul { margin: 6px 0 0 16px; }
+.help li { margin-bottom: 5px; }
