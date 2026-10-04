@@ -42,6 +42,9 @@ let S = {
   selected: null,         // instrument sélectionné (poignées visibles)
   hoverEdge: null,        // bord d'instrument survolé (surligné)
   compasMode: "open",     // 'open' | 'draw'
+  ink: "#20355e",         // couleur du trait
+  fill: "#4a90d9",        // remplissage des polygones
+  textSize: 16,           // taille du texte
   labelN: 0,              // prochaine lettre pour les points
 };
 
@@ -234,7 +237,7 @@ function updateContextBar() {
     btn("Tracer un arc", () => { S.compasMode = "draw"; updateContextBar(); }, S.compasMode === "draw");
     btn("Cercle complet", () => {
       record({ t: "pose", i: "compas", props: serialProps(p) });
-      const st = { t: "circle", cx: p.x, cy: p.y, r: p.r };
+      const st = { t: "circle", cx: p.x, cy: p.y, r: p.r, c: S.ink };
       record(st); applyStep(st); render();
     });
     const lab = document.createElement("label");
@@ -264,7 +267,7 @@ function updateContextBar() {
     btn("Tracer ce rayon", () => {
       if (rappAngle == null) return;
       const a = -rappAngle * Math.PI / 180 + p.angle;
-      const st = { t: "segment", x1: p.x, y1: p.y, x2: p.x + (p.R + 40) * Math.cos(a), y2: p.y + (p.R + 40) * Math.sin(a) };
+      const st = { t: "segment", x1: p.x, y1: p.y, x2: p.x + (p.R + 40) * Math.cos(a), y2: p.y + (p.R + 40) * Math.sin(a), c: S.ink };
       record(st); applyStep(st); render();
     });
   }
@@ -316,7 +319,7 @@ function hitObject(wx, wy) {
       if (Math.abs((wx - o.x1) * dy - (wy - o.y1) * dx) / L < 7) return i;
     }
     if ((o.type === "point" || o.type === "croix") && dist(wx, wy, o.x, o.y) < 10) return i;
-    if (o.type === "text" && wx > o.x - 4 && wx < o.x + o.str.length * 8 && wy > o.y - 16 && wy < o.y + 5) return i;
+    if (o.type === "text" && wx > o.x - 4 && wx < o.x + o.str.length * (o.fs || 15) * 0.55 && wy > o.y - (o.fs || 15) && wy < o.y + 5) return i;
     if (o.type === "stroke" && o.pts.some(pt => dist(wx, wy, pt[0], pt[1]) < 6)) return i;
     if (o.type === "polygone") {
       for (let j = 0; j < o.pts.length; j++) {
@@ -339,7 +342,7 @@ canvas.addEventListener("pointerdown", e => {
     else {
       const p = snapPt(x, y);
       drag.pts.push([p.x, p.y]);
-      drag.preview = { type: "polyPreview", pts: drag.pts, cur: { x, y } };
+      drag.preview = { type: "polyPreview", pts: drag.pts, cur: { x, y }, c: S.ink };
       render();
     }
     return;
@@ -372,17 +375,12 @@ canvas.addEventListener("pointerdown", e => {
     }
     const p = snapPt(x, y);
     const label = String.fromCharCode(65 + (S.labelN % 26));
-    const st = { t: "point", x: p.x, y: p.y, label };
+    const st = { t: "point", x: p.x, y: p.y, label, c: S.ink };
     record(st); applyStep(st); render();
     return;
   }
   if (S.tool === "texte") {
-    const str = prompt("Texte à insérer :");
-    if (str) {
-      const p = snapPt(x, y);
-      const st = { t: "text", x: p.x, y: p.y, str };
-      record(st); applyStep(st); render();
-    }
+    openTextInput(x, y);
     return;
   }
   if (S.tool === "gomme") {
@@ -400,7 +398,7 @@ canvas.addEventListener("pointerdown", e => {
     if (idx >= 0 && S.objects[idx].type === "segment") {
       const s = S.objects[idx];
       const label = String.fromCharCode(65 + (S.labelN % 26));
-      const st = { t: "point", x: (s.x1 + s.x2) / 2, y: (s.y1 + s.y2) / 2, label };
+      const st = { t: "point", x: (s.x1 + s.x2) / 2, y: (s.y1 + s.y2) / 2, label, c: S.ink };
       record(st); applyStep(st); render();
     }
     return;
@@ -408,7 +406,7 @@ canvas.addEventListener("pointerdown", e => {
   if (S.tool === "polygone") {
     const p0 = snapPt(x, y);
     drag = { kind: "poly", pts: [[p0.x, p0.y]], cur: { x, y } };
-    drag.preview = { type: "polyPreview", pts: drag.pts, cur: { x, y } };
+    drag.preview = { type: "polyPreview", pts: drag.pts, cur: { x, y }, c: S.ink };
     canvas.style.cursor = "crosshair";
     return;
   }
@@ -422,7 +420,7 @@ canvas.addEventListener("pointerdown", e => {
     const s = projOnSeg(q.x, q.y, ed.edge.x1, ed.edge.y1, ed.edge.x2, ed.edge.y2, 6);
     const w = toWorld(p, s.x, s.y);
     drag = { kind: "edge", inst: ed.inst, edge: ed.edge, x1: w.x, y1: w.y, x2: w.x, y2: w.y };
-    drag.preview = { type: "segment", x1: w.x, y1: w.y, x2: w.x, y2: w.y };
+    drag.preview = { type: "segment", x1: w.x, y1: w.y, x2: w.x, y2: w.y, c: S.ink };
     return;
   }
 
@@ -431,7 +429,7 @@ canvas.addEventListener("pointerdown", e => {
     const p0 = snapPt(x, y);
     const isLine = S.tool === "droite";
     drag = { kind: "freeSeg", line: isLine, x1: p0.x, y1: p0.y, x2: p0.x, y2: p0.y };
-    drag.preview = { type: isLine ? "line" : "segment", x1: p0.x, y1: p0.y, x2: p0.x, y2: p0.y };
+    drag.preview = { type: isLine ? "line" : "segment", x1: p0.x, y1: p0.y, x2: p0.x, y2: p0.y, c: S.ink };
     return;
   }
 
@@ -552,13 +550,13 @@ canvas.addEventListener("pointermove", e => {
     }
     case "poly":
       drag.cur = { x, y };
-      drag.preview = { type: "polyPreview", pts: drag.pts, cur: { x, y } };
+      drag.preview = { type: "polyPreview", pts: drag.pts, cur: { x, y }, c: S.ink };
       break;
     case "freeSeg": {
       const p2 = snapPt(x, y);
       drag.x2 = p2.x; drag.y2 = p2.y;
       drag.preview = { type: drag.line ? "line" : "segment",
-                       x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2 };
+                       x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2, c: S.ink };
       break;
     }
     case "stroke": {
@@ -595,14 +593,14 @@ canvas.addEventListener("pointerup", e => {
       break;
     case "edge":
       if (dist(drag.x1, drag.y1, drag.x2, drag.y2) > 4) {
-        const st = { t: "segment", x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2 };
+        const st = { t: "segment", x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2, c: S.ink };
         record(st); applyStep(st);
       }
       break;
     case "freeSeg":
       if (dist(drag.x1, drag.y1, drag.x2, drag.y2) > 4) {
         const st = { t: drag.line ? "line" : "segment",
-                     x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2 };
+                     x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2, c: S.ink };
         record(st); applyStep(st);
       }
       break;
@@ -610,7 +608,7 @@ canvas.addEventListener("pointerup", e => {
       const c = S.inst.compas;
       if (Math.abs(drag.a2 - drag.a1) > 0.04) {
         record({ t: "pose", i: "compas", props: Object.assign(serialProps(c), { tip: drag.a1 }) });
-        const st = { t: "arc", cx: c.x, cy: c.y, r: c.r, a1: drag.a1, a2: drag.a2 };
+        const st = { t: "arc", cx: c.x, cy: c.y, r: c.r, a1: drag.a1, a2: drag.a2, c: S.ink };
         record(st); applyStep(st);
         record({ t: "pose", i: "compas", props: serialProps(c) });
       }
@@ -618,7 +616,7 @@ canvas.addEventListener("pointerup", e => {
     }
     case "stroke":
       if (drag.pts.length > 2) {
-        const st = { t: "stroke", pts: drag.pts.slice() };
+        const st = { t: "stroke", pts: drag.pts.slice(), c: S.ink };
         record(st); applyStep(st);
       }
       break;
@@ -640,7 +638,7 @@ canvas.addEventListener("dblclick", () => {
   if (drag && drag.kind === "poly" && drag.pts.length >= 3) commitPoly();
 });
 function commitPoly() {
-  const st = { t: "polygone", pts: drag.pts.slice() };
+  const st = { t: "polygone", pts: drag.pts.slice(), c: S.ink, fill: S.fill };
   record(st); applyStep(st);
   drag = null; canvas.style.cursor = "default";
   render();
@@ -649,7 +647,7 @@ function commitPoly() {
 function startArc(comp, x, y) {
   const a0 = Math.atan2(y - comp.y, x - comp.x);
   return { kind: "arc", inst: "compas", a1: a0, a2: a0, lastA: a0,
-           preview: { type: "arc", cx: comp.x, cy: comp.y, r: comp.r, a1: a0, a2: a0 } };
+           preview: { type: "arc", cx: comp.x, cy: comp.y, r: comp.r, a1: a0, a2: a0, c: S.ink } };
 }
 
 /* ============================================================
@@ -681,6 +679,37 @@ document.getElementById("gridSelect").onchange = e => {
   render();
 };
 document.getElementById("snapChk").onchange = e => { S.snap = e.target.checked; };
+document.getElementById("inkColor").oninput = e => { S.ink = e.target.value; };
+document.getElementById("fillColor").oninput = e => { S.fill = e.target.value; };
+document.getElementById("textSizeSel").onchange = e => { S.textSize = +e.target.value; };
+
+/* ----- saisie de texte directement sur la feuille ----- */
+const textInput = document.getElementById("textInput");
+function openTextInput(x, y) {
+  textInput.value = "";
+  textInput.style.left = x + "px";
+  textInput.style.top = (y - S.textSize) + "px";
+  textInput.style.fontSize = S.textSize + "px";
+  textInput.style.color = S.ink;
+  textInput.classList.remove("hidden");
+  textInput._pos = { x, y };
+  setTimeout(() => textInput.focus(), 0);
+}
+function commitTextInput() {
+  const str = textInput.value.trim();
+  textInput.classList.add("hidden");
+  if (str && textInput._pos) {
+    const st = { t: "text", x: textInput._pos.x, y: textInput._pos.y, str, c: S.ink, fs: S.textSize };
+    record(st); applyStep(st); render();
+  }
+  textInput._pos = null;
+}
+textInput.addEventListener("keydown", e => {
+  e.stopPropagation();
+  if (e.key === "Enter") commitTextInput();
+  else if (e.key === "Escape") { textInput.value = ""; commitTextInput(); }
+});
+textInput.addEventListener("blur", commitTextInput);
 
 /* ----- image d'exercice en fond ----- */
 const imgFile = document.getElementById("imgFile");

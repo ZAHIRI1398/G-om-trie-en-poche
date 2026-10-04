@@ -105,6 +105,10 @@ function tickY(ctx, x, y) { line(ctx, x - 4, y, x + 4, y); }
    Objets géométriques tracés sur la feuille
    ============================================================ */
 const INK = "#20355e";
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
 function drawObjects(ctx, objects) {
   ctx.save();
   ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -112,7 +116,7 @@ function drawObjects(ctx, objects) {
   ctx.restore();
 }
 function drawObject(ctx, o, frac = 1) {
-  ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineWidth = 1.6;
+  ctx.strokeStyle = o.c || INK; ctx.fillStyle = o.c || INK; ctx.lineWidth = 1.6;
   switch (o.type) {
     case "segment": {
       const x2 = lerp(o.x1, o.x2, frac), y2 = lerp(o.y1, o.y2, frac);
@@ -155,7 +159,7 @@ function drawObject(ctx, o, frac = 1) {
     }
     case "text": {
       ctx.globalAlpha = frac;
-      ctx.font = "15px Georgia"; ctx.textAlign = "left";
+      ctx.font = (o.fs || 15) + "px Georgia"; ctx.textAlign = "left";
       ctx.fillText(o.str, o.x, o.y);
       ctx.globalAlpha = 1;
       break;
@@ -176,8 +180,8 @@ function drawObject(ctx, o, frac = 1) {
         total += dist(a[0], a[1], b[0], b[1]); cum.push(total);
       }
       let rem = total * frac;
-      if (frac >= 1) {                       // remplissage léger quand terminé
-        ctx.fillStyle = "rgba(32,53,94,.08)";
+      if (frac >= 1) {                       // remplissage quand terminé
+        ctx.fillStyle = hexToRgba(o.fill || "#20355e", 0.22);
         ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]);
         for (let i = 1; i < P.length; i++) ctx.lineTo(P[i][0], P[i][1]);
         ctx.closePath(); ctx.fill();

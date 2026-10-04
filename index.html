@@ -47,6 +47,19 @@
     </label>
     <button type="button" class="tb-btn hidden" id="imgRemove" title="Retirer l'image de fond">✕<span>Retirer img.</span></button>
 
+    <div class="tb-title">Style</div>
+    <label class="tb-check">Trait <input type="color" id="inkColor" value="#20355e"></label>
+    <label class="tb-check">Remplissage <input type="color" id="fillColor" value="#4a90d9"></label>
+    <label class="tb-check">Texte
+      <select id="textSizeSel">
+        <option value="13">13</option>
+        <option value="16" selected>16</option>
+        <option value="20">20</option>
+        <option value="24">24</option>
+        <option value="30">30</option>
+      </select>
+    </label>
+
     <div class="tb-title">Édition</div>
     <button type="button" class="tb-btn" id="undoBtn"  title="Annuler la dernière action (Ctrl+Z)">↶<span>Annuler</span></button>
     <button type="button" class="tb-btn" id="clearBtn" title="Tout effacer">✕<span>Tout effacer</span></button>
@@ -59,6 +72,7 @@
       <canvas id="paper"></canvas>
       <div id="playOverlay" class="hidden">Mode lecture — construction en cours…</div>
       <div id="stepCaption" class="hidden"></div>
+      <input id="textInput" class="hidden" type="text" placeholder="Texte…" autocomplete="off">
     </div>
 
     <!-- ===== Lecteur (bas) ===== -->
@@ -69,6 +83,8 @@
       <button type="button" id="btnNext"  title="Étape suivante">⏭</button>
       <input type="range" id="playSlider" min="0" max="0" value="0" step="1">
       <select id="speedSel" title="Vitesse de lecture">
+        <option value="0.1">×0,1</option>
+        <option value="0.25">×0,25</option>
         <option value="0.5">×0,5</option>
         <option value="1" selected>×1</option>
         <option value="2">×2</option>
