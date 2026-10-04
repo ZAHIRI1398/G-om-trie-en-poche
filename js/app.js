@@ -223,7 +223,9 @@ function updateContextBar() {
   }
   const p = S.inst[k];
   const names = { crayon: "Crayon", compas: "Compas", regle: "Règle", equerre: "Équerre", rapporteur: "Rapporteur", regleEquerre: "Règle-équerre" };
-  ctxInfo.textContent = names[k] + " — glissez le corps pour déplacer, la poignée bleue pour pivoter.";
+  ctxInfo.textContent = names[k] + (k === "rapporteur"
+    ? " — centrez-le sur le sommet, alignez le 0° sur un côté, puis survolez : l'angle s'affiche."
+    : " — glissez le corps pour déplacer, la poignée bleue pour pivoter.");
 
   const btn = (label, fn, on = false) => {
     const b = document.createElement("button");
@@ -269,6 +271,23 @@ function updateContextBar() {
       const a = -rappAngle * Math.PI / 180 + p.angle;
       const st = { t: "segment", x1: p.x, y1: p.y, x2: p.x + (p.R + 40) * Math.cos(a), y2: p.y + (p.R + 40) * Math.sin(a), c: S.ink };
       record(st); applyStep(st); render();
+    });
+    btn("Marquer l'angle", () => {
+      if (rappAngle == null) return;
+      const st = { t: "arc", cx: p.x, cy: p.y, r: 45,
+                   a1: p.angle, a2: p.angle - rappAngle * Math.PI / 180, c: S.ink };
+      record(st); applyStep(st); render();
+    });
+    btn("Angle + texte", () => {
+      if (rappAngle == null) return;
+      const am = p.angle - (rappAngle / 2) * Math.PI / 180;   // bissectrice
+      const a2 = p.angle - rappAngle * Math.PI / 180;
+      record({ t: "arc", cx: p.x, cy: p.y, r: 45, a1: p.angle, a2: a2, c: S.ink });
+      record({ t: "text", x: p.x + 58 * Math.cos(am), y: p.y + 58 * Math.sin(am),
+               str: Math.round(rappAngle) + "°", c: S.ink, fs: S.textSize });
+      applyStep(S.script[S.script.length - 2]);
+      applyStep(S.script[S.script.length - 1]);
+      render();
     });
   }
 }
