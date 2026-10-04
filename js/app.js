@@ -218,6 +218,7 @@ function updateContextBar() {
       : S.tool === "droite" ? "Cliquez-glissez pour tracer une droite."
       : S.tool === "polygone" ? "Cliquez les sommets (3 minimum), puis cliquez le 1er sommet ou double-cliquez pour fermer. Échap = annuler."
       : S.tool === "milieu" ? "Cliquez sur un segment pour placer son milieu (point nommé)."
+      : S.tool === "dessin" ? "Cliquez-glissez pour dessiner à main levée."
       : "Glissez un objet tracé pour le déplacer, le long d'un bord orange pour tracer, ou attrapez le crayon pour écrire.";
     return;
   }
@@ -430,6 +431,13 @@ canvas.addEventListener("pointerdown", e => {
     return;
   }
 
+  /* ----- outil « crayon libre » : dessin à main levée partout ----- */
+  if (S.tool === "dessin") {
+    drag = { kind: "stroke", offX: 0, offY: 0, pts: [[x, y]] };
+    drag.preview = { type: "stroke", pts: drag.pts, c: S.ink };
+    return;
+  }
+
   /* ----- outil « manipuler » ----- */
   const ed = S.tool === "droite" ? null : hitEdge(x, y);
   if (ed) {
@@ -517,7 +525,7 @@ canvas.addEventListener("pointermove", e => {
     const ed = canEdge ? hitEdge(x, y) : null;
     const overObj = !ed && S.tool === "move" && hitObject(x, y) >= 0;
     canvas.style.cursor = ed ? "crosshair"
-      : (S.tool === "segment" || S.tool === "droite" || S.tool === "polygone" || S.tool === "milieu") ? "crosshair"
+      : (S.tool === "segment" || S.tool === "droite" || S.tool === "polygone" || S.tool === "milieu" || S.tool === "dessin") ? "crosshair"
       : overObj ? "move" : "default";
     if ((ed ? ed.inst : null) !== (S.hoverEdge ? S.hoverEdge.inst : null) || ed) {
       S.hoverEdge = ed; render();
