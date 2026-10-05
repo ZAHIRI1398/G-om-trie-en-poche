@@ -109,6 +109,21 @@ bundle += `
   S.tool = "move";
   console.log("[2d] polygone OK :", JSON.stringify(pg.pts));
 
+  // 2f. Flèche : glisser quasi-horizontal -> alignée ; export/import
+  S.tool = "fleche";
+  pd(ev(600, 400)); pm(ev(700, 402)); pu(ev(700, 402));
+  const fl = S.objects.find(o => o.type === "fleche");
+  if (!fl) throw new Error("flèche non créée");
+  if (fl.y2 !== fl.y1) throw new Error("alignement horizontal KO : " + JSON.stringify(fl));
+  pd(ev(600, 500)); pm(ev(603, 590)); pu(ev(603, 590));
+  const fl2 = S.objects.filter(o => o.type === "fleche").pop();
+  if (fl2.x2 !== fl2.x1) throw new Error("alignement vertical KO : " + JSON.stringify(fl2));
+  pd(ev(600, 600)); pm(ev(700, 560)); pu(ev(700, 560));
+  const fl3 = S.objects.filter(o => o.type === "fleche").pop();
+  if (fl3.y2 === fl3.y1 || fl3.x2 === fl3.x1) throw new Error("flèche oblique alignée par erreur : " + JSON.stringify(fl3));
+  S.tool = "move";
+  console.log("[2f] flèches H/V/oblique OK");
+
   // 2e. Déplacer un objet tracé (le polygone) avec l'outil Manipuler
   pd(ev(450, 110));            // sur un côté du triangle
   if (!drag || drag.kind !== "objMove") throw new Error("drag objMove attendu, obtenu " + JSON.stringify(drag && drag.kind));

@@ -134,7 +134,7 @@ function record(step) {
 }
 function translateObject(o, dx, dy) {
   switch (o.type) {
-    case "segment": case "line":
+    case "segment": case "line": case "fleche":
       o.x1 += dx; o.y1 += dy; o.x2 += dx; o.y2 += dy; break;
     case "arc": case "circle":
       o.cx += dx; o.cy += dy; break;
@@ -219,6 +219,7 @@ function updateContextBar() {
       : S.tool === "polygone" ? "Cliquez les sommets (3 minimum), puis cliquez le 1er sommet ou double-cliquez pour fermer. Échap = annuler."
       : S.tool === "milieu" ? "Cliquez sur un segment pour placer son milieu (point nommé)."
       : S.tool === "dessin" ? "Cliquez-glissez pour dessiner à main levée."
+      : S.tool === "fleche" ? "Cliquez-glissez pour tracer une flèche ; près de l'horizontale/verticale elle s'aligne automatiquement."
       : "Glissez un objet tracé pour le déplacer, le long d'un bord orange pour tracer, ou attrapez le crayon pour écrire.";
     return;
   }
@@ -331,7 +332,7 @@ function hitEdge(wx, wy) {
 function hitObject(wx, wy) {
   for (let i = S.objects.length - 1; i >= 0; i--) {
     const o = S.objects[i];
-    if (o.type === "segment" && distToSeg(wx, wy, o.x1, o.y1, o.x2, o.y2).d < 7) return i;
+    if ((o.type === "segment" || o.type === "fleche") && distToSeg(wx, wy, o.x1, o.y1, o.x2, o.y2).d < 7) return i;
     if ((o.type === "arc" || o.type === "circle") &&
         Math.abs(dist(wx, wy, o.cx, o.cy) - o.r) < 7) return i;
     if (o.type === "line") {
@@ -439,7 +440,7 @@ canvas.addEventListener("pointerdown", e => {
   }
 
   /* ----- outil « manipuler » ----- */
-  const ed = S.tool === "droite" ? null : hitEdge(x, y);
+  const ed = (S.tool === "droite" || S.tool === "fleche") ? null : hitEdge(x, y);
   if (ed) {
     const p = S.inst[ed.inst];
     S.selected = ed.inst; updateContextBar();
@@ -451,12 +452,13 @@ canvas.addEventListener("pointerdown", e => {
     return;
   }
 
-  /* ----- outils segment / droite : cliquez-glissez ----- */
-  if (S.tool === "segment" || S.tool === "droite") {
+  /* ----- outils segment / droite / flèche : cliquez-glissez ----- */
+  if (S.tool === "segment" || S.tool === "droite" || S.tool === "fleche") {
     const p0 = snapPt(x, y);
-    const isLine = S.tool === "droite";
-    drag = { kind: "freeSeg", line: isLine, x1: p0.x, y1: p0.y, x2: p0.x, y2: p0.y };
-    drag.preview = { type: isLine ? "line" : "segment", x1: p0.x, y1: p0.y, x2: p0.x, y2: p0.y, c: S.ink };
+    drag = { kind: "freeSeg", line: S.tool === "droite", fleche: S.tool === "fleche",
+             x1: p0.x, y1: p0.y, x2: p0.x, y2: p0.y };
+    drag.preview = { type: S.tool === "droite" ? "line" : S.tool === "fleche" ? "fleche" : "segment",
+                     x1: p0.x, y1: p0.y, x2: p0.x, y2: p0.y, c: S.ink };
     return;
   }
 
@@ -525,7 +527,7 @@ canvas.addEventListener("pointermove", e => {
     const ed = canEdge ? hitEdge(x, y) : null;
     const overObj = !ed && S.tool === "move" && hitObject(x, y) >= 0;
     canvas.style.cursor = ed ? "crosshair"
-      : (S.tool === "segment" || S.tool === "droite" || S.tool === "polygone" || S.tool === "milieu" || S.tool === "dessin") ? "crosshair"
+      : (S.tool === "segment" || S.tool === "droite" || S.tool === "polygone" || S.tool === "milieu" || S.tool === "dessin" || S.tool === "fleche") ? "crosshair"
       : overObj ? "move" : "default";
     if ((ed ? ed.inst : null) !== (S.hoverEdge ? S.hoverEdge.inst : null) || ed) {
       S.hoverEdge = ed; render();
@@ -581,8 +583,13 @@ canvas.addEventListener("pointermove", e => {
       break;
     case "freeSeg": {
       const p2 = snapPt(x, y);
-      drag.x2 = p2.x; drag.y2 = p2.y;
-      drag.preview = { type: drag.line ? "line" : "segment",
+      let x2 = p2.x, y2 = p2.y;
+      if (drag.fleche) {   // alignement auto sur l'horizontale / la verticale
+        if (Math.abs(y2 - drag.y1) < Math.abs(x2 - drag.x1) * 0.2) y2 = drag.y1;
+        else if (Math.abs(x2 - drag.x1) < Math.abs(y2 - drag.y1) * 0.2) x2 = drag.x1;
+      }
+      drag.x2 = x2; drag.y2 = y2;
+      drag.preview = { type: drag.line ? "line" : drag.fleche ? "fleche" : "segment",
                        x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2, c: S.ink };
       break;
     }
@@ -626,7 +633,7 @@ canvas.addEventListener("pointerup", e => {
       break;
     case "freeSeg":
       if (dist(drag.x1, drag.y1, drag.x2, drag.y2) > 4) {
-        const st = { t: drag.line ? "line" : "segment",
+        const st = { t: drag.line ? "line" : drag.fleche ? "fleche" : "segment",
                      x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2, c: S.ink };
         record(st); applyStep(st);
       }
@@ -793,7 +800,7 @@ document.getElementById("clearBtn").onclick = () => {
 /* ============================================================
    LECTEUR D'ANIMATION
    ============================================================ */
-const DUR = { paper: 1, show: 350, hide: 300, pose: 600, segment: 750, line: 900,
+const DUR = { paper: 1, show: 350, hide: 300, pose: 600, segment: 750, fleche: 750, line: 900,
               arc: 850, circle: 1000, point: 400, croix: 300, text: 450,
               movePoint: 400, moveObj: 400 };
 function durOf(st) {
@@ -904,8 +911,8 @@ function animateStep(st, f) {
       }
       break;
     }
-    case "segment": {
-      play.partial = { obj: { type: "segment", ...st }, frac: f };
+    case "segment": case "fleche": {
+      play.partial = { obj: { type: st.t, ...st }, frac: f };
       play.ghost = { x: lerp(st.x1, st.x2, f), y: lerp(st.y1, st.y2, f),
                      angle: Math.atan2(st.y2 - st.y1, st.x2 - st.x1) + Math.PI / 2 };
       break;

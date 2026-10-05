@@ -123,6 +123,20 @@ function drawObject(ctx, o, frac = 1) {
       line(ctx, o.x1, o.y1, x2, y2);
       break;
     }
+    case "fleche": {
+      const x2 = lerp(o.x1, o.x2, frac), y2 = lerp(o.y1, o.y2, frac);
+      line(ctx, o.x1, o.y1, x2, y2);
+      const a = Math.atan2(y2 - o.y1, x2 - o.x1);
+      const L = Math.min(12, dist(o.x1, o.y1, x2, y2) * 0.45);
+      if (L > 2) {
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - L * Math.cos(a - 0.42), y2 - L * Math.sin(a - 0.42));
+        ctx.lineTo(x2 - L * Math.cos(a + 0.42), y2 - L * Math.sin(a + 0.42));
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
     case "line": {   // droite passant par (x1,y1) et (x2,y2)
       const dx = o.x2 - o.x1, dy = o.y2 - o.y1, L = Math.hypot(dx, dy) || 1;
       const ux = dx / L, uy = dy / L, ext = 1400 * frac;
