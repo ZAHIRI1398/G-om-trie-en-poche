@@ -175,6 +175,11 @@ function applyStep(st, stepIdx = S.script.length - 1) {
       if (o) translateObject(o, st.dx, st.dy);
       break;
     }
+    case "editText": {
+      const o = S.objects.find(o => o._step === st.ref);
+      if (o) o.str = st.str;
+      break;
+    }
     default: {
       const o = Object.assign({ type: st.t }, st);
       delete o.t; delete o.msg;
@@ -401,7 +406,11 @@ canvas.addEventListener("pointerdown", e => {
     return;
   }
   if (S.tool === "texte") {
-    openTextInput(x, y);
+    const idx = hitObject(x, y);
+    if (idx >= 0 && S.objects[idx].type === "text") {
+      const o = S.objects[idx];
+      openTextInput(o.x, o.y, o);
+    } else openTextInput(x, y);
     return;
   }
   if (S.tool === "gomme") {
@@ -668,8 +677,16 @@ canvas.addEventListener("pointerup", e => {
   render();
 });
 
-canvas.addEventListener("dblclick", () => {
-  if (drag && drag.kind === "poly" && drag.pts.length >= 3) commitPoly();
+canvas.addEventListener("dblclick", e => {
+  if (drag && drag.kind === "poly" && drag.pts.length >= 3) { commitPoly(); return; }
+  // double-clic sur un texte existant : le modifier
+  if (play.active) return;
+  const { x, y } = canvasPos(e);
+  const idx = hitObject(x, y);
+  if (idx >= 0 && S.objects[idx].type === "text") {
+    const o = S.objects[idx];
+    openTextInput(o.x, o.y, o);
+  }
 });
 function commitPoly() {
   const st = { t: "polygone", pts: drag.pts.slice(), c: S.ink, fill: S.fill };
@@ -719,24 +736,33 @@ document.getElementById("textSizeSel").onchange = e => { S.textSize = +e.target.
 
 /* ----- saisie de texte directement sur la feuille ----- */
 const textInput = document.getElementById("textInput");
-function openTextInput(x, y) {
-  textInput.value = "";
+function openTextInput(x, y, obj = null) {
+  const fs = obj ? (obj.fs || 15) : S.textSize;
+  textInput.value = obj ? obj.str : "";
   textInput.style.left = x + "px";
-  textInput.style.top = (y - S.textSize) + "px";
-  textInput.style.fontSize = S.textSize + "px";
-  textInput.style.color = S.ink;
+  textInput.style.top = (y - fs) + "px";
+  textInput.style.fontSize = fs + "px";
+  textInput.style.color = obj ? (obj.c || S.ink) : S.ink;
   textInput.classList.remove("hidden");
   textInput._pos = { x, y };
-  setTimeout(() => textInput.focus(), 0);
+  textInput._edit = obj;
+  setTimeout(() => { textInput.focus(); textInput.select(); }, 0);
 }
 function commitTextInput() {
   const str = textInput.value.trim();
   textInput.classList.add("hidden");
-  if (str && textInput._pos) {
+  if (textInput._edit) {
+    const o = textInput._edit;
+    if (str && str !== o.str) {
+      o.str = str;
+      if (o._step >= 0) record({ t: "editText", ref: o._step, str });
+      render();
+    }
+  } else if (str && textInput._pos) {
     const st = { t: "text", x: textInput._pos.x, y: textInput._pos.y, str, c: S.ink, fs: S.textSize };
     record(st); applyStep(st); render();
   }
-  textInput._pos = null;
+  textInput._pos = null; textInput._edit = null;
 }
 textInput.addEventListener("keydown", e => {
   e.stopPropagation();
@@ -802,7 +828,7 @@ document.getElementById("clearBtn").onclick = () => {
    ============================================================ */
 const DUR = { paper: 1, show: 350, hide: 300, pose: 600, segment: 750, fleche: 750, line: 900,
               arc: 850, circle: 1000, point: 400, croix: 300, text: 450,
-              movePoint: 400, moveObj: 400 };
+              movePoint: 400, moveObj: 400, editText: 400 };
 function durOf(st) {
   if (st.t === "stroke") return clamp(st.pts.length * 22, 300, 2500);
   if (st.t === "polygone") return 400 + st.pts.length * 160;

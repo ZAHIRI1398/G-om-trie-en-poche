@@ -31,7 +31,7 @@ const sandbox = {
   },
   window: { devicePixelRatio: 1, addEventListener() {} },
   performance: { now: () => 0 },
-  requestAnimationFrame() {},
+  requestAnimationFrame() {}, setTimeout() {},
   prompt: () => "test", confirm: () => true, alert() {},
   URL: { createObjectURL: () => "blob:", revokeObjectURL() {} },
   Blob: function () {}, FileReader: function () {},
@@ -123,6 +123,24 @@ bundle += `
   if (fl3.y2 === fl3.y1 || fl3.x2 === fl3.x1) throw new Error("flèche oblique alignée par erreur : " + JSON.stringify(fl3));
   S.tool = "move";
   console.log("[2f] flèches H/V/oblique OK");
+
+  // 2g. Modifier un texte existant par double-clic
+  const dbc = __listeners["paper:dblclick"];
+  S.script.push({ t: "text", x: 100, y: 100, str: "avant" });
+  rebuild();
+  dbc(ev(100, 100));
+  const tiEl = document.getElementById("textInput");
+  tiEl.value = "après";
+  commitTextInput();
+  const tObj = S.objects.find(o => o.type === "text");
+  if (!tObj || tObj.str !== "après") throw new Error("édition texte KO : " + JSON.stringify(tObj));
+  if (!S.script.some(s => s.t === "editText")) throw new Error("étape editText non enregistrée");
+  rebuild();
+  const tObj2 = S.objects.find(o => o.type === "text");
+  if (!tObj2 || tObj2.str !== "après") throw new Error("editText non rejoué : " + JSON.stringify(tObj2));
+  // rebuild() a réinitialisé les instruments : on restaure la règle pour la suite
+  S.inst.regle.visible = true; S.inst.regle.x = 470; S.inst.regle.y = 540; S.inst.regle.angle = 0;
+  console.log("[2g] édition de texte OK");
 
   // 2e. Déplacer un objet tracé (le polygone) avec l'outil Manipuler
   pd(ev(450, 110));            // sur un côté du triangle
