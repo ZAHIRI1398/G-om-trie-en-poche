@@ -1112,13 +1112,13 @@ function loadScript(txt) {
    Exemples intégrés + constructions enregistrées (localStorage)
    ============================================================ */
 const BIBLIO_EXEMPLES = [
-  ["Triangle équilatéral au compas", "triangle"],
-  ["Médiatrice d'un segment (compas)", "mediatrice"],
-  ["Angle de 60° au compas", "angle60"],
-  ["Cercle de diamètre [AB]", "cercleDiametre"],
-  ["Perpendiculaire à (d) hors (d) (compas)", "perpCompas"],
-  ["Parallèle à (d) par un point (équerre)", "parallele"],
-  ["Perpendiculaire à la règle-équerre", "perpendiculaire"],
+  ["Triangle équilatéral au compas", "triangle", "Triangles"],
+  ["Angle de 60° au compas", "angle60", "Triangles"],
+  ["Médiatrice d'un segment (compas)", "mediatrice", "Médiatrices"],
+  ["Cercle de diamètre [AB]", "cercleDiametre", "Cercles"],
+  ["Perpendiculaire à (d) hors (d) (compas)", "perpCompas", "Parallèles et perpendiculaires"],
+  ["Parallèle à (d) par un point (équerre)", "parallele", "Parallèles et perpendiculaires"],
+  ["Perpendiculaire à la règle-équerre", "perpendiculaire", "Parallèles et perpendiculaires"],
 ];
 const BIBLIO_KEY = "iep_biblio_v1";
 function getBiblio() {
@@ -1157,9 +1157,39 @@ function renderBiblio() {
     };
     return del;
   };
+  // rend un chapitre repliable (« ▾ Chapitre » cliquable) contenant ses liens ;
+  // le clic ouvre aussi la « page du chapitre » avec ses étiquettes
+  const chapter = (cat, items, makeItem, pageItems) => {
+    const li = document.createElement("li");
+    li.className = "bib-cat";
+    const open = !bibCollapsed[cat];
+    li.textContent = (open ? "▾ " : "▸ ") + cat;
+    li.title = "Ouvrir la page du chapitre";
+    li.onclick = () => {
+      bibCollapsed[cat] = open; renderBiblio();
+      openChapter(cat, pageItems);
+    };
+    ul.appendChild(li);
+    if (open) items.forEach(makeItem);
+  };
+
   head("Constructions d'exemple");
-  for (const [nom, k] of BIBLIO_EXEMPLES)
-    link(nom, () => { loadSteps(EXAMPLES[k]()); scriptMsg.textContent = ""; });
+  // regrouper les exemples par chapitre
+  const exGroups = new Map();
+  for (const [nom, k, cat] of BIBLIO_EXEMPLES) {
+    if (!exGroups.has(cat)) exGroups.set(cat, []);
+    exGroups.get(cat).push([nom, k]);
+  }
+  for (const [cat, items] of exGroups) {
+    const sibs = items.map(([nom, k]) => ({ name: nom, getSteps: () => EXAMPLES[k]() }));
+    chapter(cat, items,
+      ([nom, k]) => {
+        const li = link(nom, () => { openViewer(nom, EXAMPLES[k](), sibs); });
+        li.classList.add("bib-sub");
+      },
+      items.map(([nom, k]) => ({ name: nom, open: () => openViewer(nom, EXAMPLES[k](), sibs) })));
+  }
+
   const user = getBiblio();
   if (!user.length) return;
   head("Mes constructions");
@@ -1171,21 +1201,16 @@ function renderBiblio() {
     groups.get(c).push({ entry, i });
   });
   for (const [cat, items] of groups) {
-    if (groups.size > 1 || cat !== "Divers") {
-      const li = document.createElement("li");
-      li.className = "bib-cat";
-      const open = !bibCollapsed[cat];
-      li.textContent = (open ? "▾ " : "▸ ") + cat;
-      li.title = "Cliquer pour replier/déplier";
-      li.onclick = () => { bibCollapsed[cat] = open; renderBiblio(); };
-      ul.appendChild(li);
-      if (!open) continue;
-    }
-    for (const { entry, i } of items) {
-      const li = link(entry.name, () => { loadSteps(entry.steps); scriptMsg.textContent = ""; });
+    const sibs = items.map(({ entry }) => ({ name: entry.name, getSteps: () => entry.steps }));
+    const renderItems = () => items.forEach(({ entry, i }) => {
+      const li = link(entry.name, () => { openViewer(entry.name, entry.steps, sibs); });
       li.classList.add("bib-sub");
       li.appendChild(delBtn(i));
-    }
+    });
+    if (groups.size > 1 || cat !== "Divers")
+      chapter(cat, items, renderItems,
+        items.map(({ entry }) => ({ name: entry.name, open: () => openViewer(entry.name, entry.steps, sibs) })));
+    else renderItems();
   }
 }
 document.getElementById("saveBiblioBtn").onclick = () => {
@@ -1202,6 +1227,297 @@ document.getElementById("saveBiblioBtn").onclick = () => {
   }
 };
 renderBiblio();
+
+/* ----- Page de chapitre : étiquettes des exercices ----- */
+function openChapter(cat, pageItems) {
+  document.getElementById("navTitle").textContent = cat;
+  const box = document.getElementById("navCards");
+  box.innerHTML = "";
+  for (const it of pageItems) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "nav-card"; b.textContent = it.name;
+    b.onclick = () => { closeNav(); it.open(); };
+    box.appendChild(b);
+  }
+  document.getElementById("navModal").classList.remove("hidden");
+}
+function closeNav() { document.getElementById("navModal").classList.add("hidden"); }
+document.getElementById("navClose").onclick = closeNav;
+document.getElementById("navModal").addEventListener("pointerdown", e => {
+  if (e.target === document.getElementById("navModal")) closeNav();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !document.getElementById("navModal").classList.contains("hidden")) closeNav();
+});
+
+/* ============================================================
+   VISIONNEUSE — ouvre une construction dans une fenêtre encadrée
+   (lecture animée autonome, sans toucher la feuille d'édition)
+   ============================================================ */
+const vCanvas = document.getElementById("vCanvas");
+const vCtx = vCanvas.getContext("2d");
+const vModal = document.getElementById("viewerModal");
+const vCaption = document.getElementById("vCaption");
+const vSlider = document.getElementById("vSlider");
+const vCounter = document.getElementById("vCounter");
+
+const V = { open: false, steps: [], idx: 0, playing: false, paused: false,
+            t0: 0, elapsed: 0, speed: 1,
+            objects: [], inst: null, grid: "blanc",
+            partial: null, ghost: null, poseFrom: null, lastF: 0, objRef: null,
+            siblings: null, sibIdx: -1 };
+
+function vApply(st, i) {
+  switch (st.t) {
+    case "paper": V.grid = st.grid; break;
+    case "show": V.inst[st.i].visible = true; break;
+    case "hide": V.inst[st.i].visible = false; break;
+    case "pose": Object.assign(V.inst[st.i], st.props); break;
+    case "movePoint": {
+      const o = V.objects.find(o => o.type === "point" && o.label === st.label);
+      if (o) { o.x = st.x; o.y = st.y; }
+      break;
+    }
+    case "moveObj": {
+      const o = V.objects.find(o => o._step === st.ref);
+      if (o) translateObject(o, st.dx, st.dy);
+      break;
+    }
+    case "editText": {
+      const o = V.objects.find(o => o._step === st.ref);
+      if (o) o.str = st.str;
+      break;
+    }
+    default: {
+      const o = Object.assign({ type: st.t }, st);
+      delete o.t; delete o.msg;
+      o._step = i;
+      V.objects.push(o);
+    }
+  }
+}
+function vDur(st) {
+  if (st.t === "stroke") return clamp(st.pts.length * 22, 300, 2500);
+  if (st.t === "polygone") return 400 + st.pts.length * 160;
+  if (st.t === "pose") {
+    const p = V.inst[st.i];
+    const d = st.props.x != null ? dist(p.x, p.y, st.props.x, st.props.y ?? p.y) : 0;
+    return clamp(400 + d * 0.6, 400, 1400);
+  }
+  return DUR[st.t] || 400;
+}
+function vReset(target) {
+  V.objects = []; V.inst = defaultInstruments(); V.grid = "blanc";
+  for (let i = 0; i < target; i++) vApply(V.steps[i], i);
+  V.idx = target; V.partial = null; V.ghost = null;
+  const st = V.steps[V.idx];
+  vCaption.textContent = st && st.msg ? st.msg : "";
+  vCaption.classList.toggle("hidden", !(st && st.msg));
+  vSlider.value = V.idx;
+  vCounter.textContent = `${V.idx} / ${V.steps.length} étapes`;
+}
+function vStartStep() {
+  V.t0 = performance.now(); V.elapsed = 0;
+  const st = V.steps[V.idx];
+  vCaption.textContent = st && st.msg ? st.msg : "";
+  vCaption.classList.toggle("hidden", !(st && st.msg));
+  V.poseFrom = null; V.lastF = 0; V.objRef = null;
+  if (st.t === "pose") V.poseFrom = Object.assign({}, V.inst[st.i]);
+  if (st.t === "moveObj") V.objRef = V.objects.find(o => o._step === st.ref) || null;
+  if (st.t === "arc" || st.t === "circle") {
+    const c = V.inst.compas;
+    if (c.visible) { c.x = st.cx; c.y = st.cy; c.r = st.r; c.tip = st.t === "arc" ? st.a1 : 0; }
+  }
+}
+function vAnimate(st, f) {
+  switch (st.t) {
+    case "show":
+      V.inst[st.i].visible = true;
+      V.partial = { instAlpha: st.i, frac: f };
+      break;
+    case "pose": {
+      const p = V.inst[st.i], from = V.poseFrom || Object.assign({}, p);
+      for (const k in st.props) {
+        if (k === "flip" || k === "side" || k === "eqFlip") {
+          if (f >= 0.5) p[k] = st.props[k];
+        } else if (typeof st.props[k] === "number" && typeof from[k] === "number") {
+          let target = st.props[k], start = from[k];
+          if (k === "angle" || k === "tip") {
+            let d = Math.atan2(Math.sin(target - start), Math.cos(target - start));
+            p[k] = start + d * f;
+          } else p[k] = lerp(start, target, f);
+        } else if (f >= 1) p[k] = st.props[k];
+      }
+      break;
+    }
+    case "segment": case "fleche":
+      V.partial = { obj: { type: st.t, ...st }, frac: f };
+      V.ghost = { x: lerp(st.x1, st.x2, f), y: lerp(st.y1, st.y2, f),
+                  angle: Math.atan2(st.y2 - st.y1, st.x2 - st.x1) + Math.PI / 2 };
+      break;
+    case "arc": {
+      V.partial = { obj: { type: "arc", ...st }, frac: f };
+      const a = st.a1 + (st.a2 - st.a1) * f;
+      if (V.inst.compas.visible) V.inst.compas.tip = a;
+      else V.ghost = { x: st.cx + st.r * Math.cos(a), y: st.cy + st.r * Math.sin(a), angle: a + Math.PI / 2 };
+      break;
+    }
+    case "circle": {
+      V.partial = { obj: { type: "circle", ...st }, frac: f };
+      const a = TAU * f;
+      if (V.inst.compas.visible) V.inst.compas.tip = a;
+      else V.ghost = { x: st.cx + st.r * Math.cos(a), y: st.cy + st.r * Math.sin(a), angle: a + Math.PI / 2 };
+      break;
+    }
+    case "point": case "croix": case "text": case "stroke": case "line": case "polygone":
+      V.partial = { obj: { type: st.t, ...st }, frac: f };
+      if (st.t === "stroke") {
+        const i = clamp(Math.floor(st.pts.length * f), 0, st.pts.length - 1);
+        V.ghost = { x: st.pts[i][0], y: st.pts[i][1], angle: -1 };
+      } else if (st.t === "line") {
+        V.ghost = { x: lerp(st.x1, st.x2, f), y: lerp(st.y1, st.y2, f),
+                    angle: Math.atan2(st.y2 - st.y1, st.x2 - st.x1) + Math.PI / 2 };
+      }
+      break;
+    case "movePoint": {
+      const o = V.objects.find(o => o.type === "point" && o.label === st.label);
+      if (o && V.poseFrom == null) V.poseFrom = { x: o.x, y: o.y };
+      if (o) { o.x = lerp(V.poseFrom.x, st.x, f); o.y = lerp(V.poseFrom.y, st.y, f); }
+      break;
+    }
+    case "moveObj": {
+      const o = V.objRef || (V.objRef = V.objects.find(o => o._step === st.ref));
+      if (o) {
+        translateObject(o, st.dx * (f - (V.lastF || 0)), st.dy * (f - (V.lastF || 0)));
+        V.lastF = f;
+      }
+      break;
+    }
+    case "hide":
+      V.partial = { instAlpha: st.i, frac: 1 - f };
+      if (f >= 1) V.inst[st.i].visible = false;
+      break;
+    default: break;
+  }
+}
+function vRender() {
+  const w = vCanvas.clientWidth, h = vCanvas.clientHeight;
+  if (!w || !h) return;
+  drawGrid(vCtx, w, h, V.grid);
+  drawObjects(vCtx, V.objects);
+  if (V.partial && V.partial.obj) drawObject(vCtx, V.partial.obj, V.partial.frac);
+  for (const k of DRAW_ORDER) {
+    const p = V.inst[k];
+    if (!p.visible) continue;
+    vCtx.save();
+    if (V.partial && V.partial.instAlpha === k) vCtx.globalAlpha = V.partial.frac;
+    INSTRUMENTS[k].draw(vCtx, p, false);
+    vCtx.restore();
+  }
+  if (V.ghost) {
+    const g = { kind: "crayon", x: V.ghost.x, y: V.ghost.y, angle: V.ghost.angle };
+    vCtx.save(); INSTRUMENTS.crayon.draw(vCtx, g, false); vCtx.restore();
+  }
+}
+function vFinish() { V.playing = false; V.paused = false; vUI(); }
+function vUI() {
+  document.getElementById("vPlayPause").textContent =
+    (V.playing && !V.paused) ? "⏸" : "▶";
+  const hasS = V.siblings && V.siblings.length > 1;
+  document.getElementById("vPrevExo").disabled = !(hasS && V.sibIdx > 0);
+  document.getElementById("vNextExo").disabled = !(hasS && V.sibIdx >= 0 && V.sibIdx < V.siblings.length - 1);
+}
+function vTick(now) {
+  if (!V.open) return;
+  if (V.playing && !V.paused) {
+    const st = V.steps[V.idx];
+    if (!st) vFinish();
+    else {
+      const dur = vDur(st) / V.speed;
+      const f = clamp((now - V.t0) / dur, 0, 1);
+      vAnimate(st, f);
+      if (f >= 1) {
+        if (st.t !== "moveObj") vApply(st, V.idx);
+        V.partial = null; V.ghost = null;
+        V.idx++;
+        if (V.idx >= V.steps.length) vFinish(); else vStartStep();
+      }
+      vSlider.value = V.idx;
+      vCounter.textContent = `${V.idx} / ${V.steps.length} étapes`;
+    }
+  }
+  vRender();
+  requestAnimationFrame(vTick);
+}
+function openViewer(title, steps, siblings) {
+  if (play.active) exitPlay();
+  V.open = true; V.steps = steps.slice(); V.speed = +document.getElementById("vSpeed").value || 1;
+  V.siblings = siblings || null;
+  V.sibIdx = siblings ? siblings.findIndex(s => s.name === title) : -1;
+  V.playing = true; V.paused = false;
+  document.getElementById("viewerTitle").textContent = title;
+  vModal.classList.remove("hidden");
+  const r = vCanvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  vCanvas.width = Math.round(r.width * dpr);
+  vCanvas.height = Math.round(r.height * dpr);
+  vCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  vSlider.max = V.steps.length;
+  vReset(0); vStartStep(); vUI();
+  requestAnimationFrame(vTick);
+}
+function closeViewer() {
+  V.open = false; V.playing = false;
+  vModal.classList.add("hidden");
+}
+document.getElementById("vClose").onclick = closeViewer;
+vModal.addEventListener("pointerdown", e => { if (e.target === vModal) closeViewer(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && V.open) closeViewer(); });
+document.getElementById("vPlayPause").onclick = () => {
+  if (!V.playing) {                       // terminé → relire
+    vReset(0); V.playing = true; V.paused = false; vStartStep();
+  } else if (V.paused) {
+    V.paused = false; V.t0 = performance.now() - V.elapsed;
+  } else {
+    V.paused = true; V.elapsed = performance.now() - V.t0;
+  }
+  vUI();
+};
+document.getElementById("vNext").onclick = () => {
+  if (V.idx >= V.steps.length) return;
+  const st = V.steps[V.idx];
+  vAnimate(st, 1);
+  if (st.t !== "moveObj") vApply(st, V.idx);
+  V.partial = null; V.ghost = null; V.idx++;
+  V.paused = true;
+  if (V.idx < V.steps.length) vStartStep(); else vFinish();
+  vSlider.value = V.idx;
+  vCounter.textContent = `${V.idx} / ${V.steps.length} étapes`;
+  vUI(); vRender();
+};
+document.getElementById("vPrev").onclick = () => {
+  vReset(Math.max(0, V.idx - 1));
+  V.paused = true; vUI(); vRender();
+};
+vSlider.oninput = () => {
+  vReset(+vSlider.value);
+  V.paused = true; vUI(); vRender();
+};
+document.getElementById("vSpeed").onchange = e => { V.speed = +e.target.value; };
+const vNavExo = dir => () => {
+  if (!V.siblings) return;
+  const ni = V.sibIdx + dir;
+  if (ni < 0 || ni >= V.siblings.length) return;
+  const s = V.siblings[ni];
+  openViewer(s.name, s.getSteps(), V.siblings);
+};
+document.getElementById("vPrevExo").onclick = vNavExo(-1);
+document.getElementById("vNextExo").onclick = vNavExo(1);
+document.getElementById("vEdit").onclick = () => {
+  const steps = V.steps.slice();
+  closeViewer();
+  loadSteps(steps);                       // charger sur la feuille pour modifier
+};
 
 /* ---------------- init ---------------- */
 S.script.push({ t: "paper", grid: S.grid });   // mémoriser le quadrillage initial

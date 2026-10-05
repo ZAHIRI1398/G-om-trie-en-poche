@@ -264,6 +264,31 @@ bundle += `
   if (S.grid !== "carreaux") throw new Error("biblio reload KO");
   console.log("[10] bibliothèque OK");
 
+  // 11. Visionneuse : ouverture, reconstruction complète, fermeture
+  const sibs = [
+    { name: "Exo 1", getSteps: () => EXAMPLES.triangle() },
+    { name: "Exo 2", getSteps: () => EXAMPLES.angle60() },
+  ];
+  openViewer("Exo 1", EXAMPLES.triangle(), sibs);
+  vReset(V.steps.length);
+  if (V.objects.length !== 10) throw new Error("visionneuse rebuild KO : " + V.objects.length);
+  vReset(0);
+  vAnimate(V.steps[1] || V.steps[0], 0.5);          // pas d'exception
+  vRender();
+  if (V.sibIdx !== 0 || document.getElementById("vNextExo").disabled)
+    throw new Error("navigation exercice suivant KO");
+  document.getElementById("vNextExo").onclick();    // exercice suivant
+  if (V.sibIdx !== 1 || V.steps.length !== EXAMPLES.angle60().length)
+    throw new Error("passage à l'exercice suivant KO");
+  closeViewer();
+  if (V.open) throw new Error("visionneuse non fermée");
+  console.log("[11] visionneuse + navigation exercices OK");
+
+  // 12. Page de chapitre (étiquettes)
+  openChapter("Triangles", [{ name: "A", open: () => {} }, { name: "B", open: () => {} }]);
+  closeNav();
+  console.log("[12] page de chapitre OK");
+
   console.log("TOUS LES TESTS PASSENT");
 })();
 `;

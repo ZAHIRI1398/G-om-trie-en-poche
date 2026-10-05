@@ -124,12 +124,55 @@
         <li>Instruments : glissez le corps pour déplacer, poignée bleue pour pivoter, poignée violette pour coulisser.</li>
         <li>Rapporteur : centrez-le sur le sommet, alignez le 0° ; l'angle s'affiche au survol, « Marquer l'angle » dessine l'arc de codage, « Angle + texte » ajoute la mesure.</li>
         <li>Compas : réglez l'ouverture en glissant la pointe verte ou en saisissant la valeur en cm, puis mode « Tracer un arc » pour dessiner.</li>
-        <li>Bibliothèque : « Enregistrer dans la bibliothèque » mémorise la construction ; écrivez « Chapitre / Nom » (ex. « Triangles / Médiatrice ») pour la ranger dans un chapitre repliable.</li>
+        <li>Bibliothèque : cliquez un lien pour ouvrir la construction dans une fenêtre de lecture (comme une vidéo, avec ses explications) ; « ✎ Modifier » la charge sur la feuille. « Enregistrer » avec « Chapitre / Nom » (ex. « Triangles / Médiatrice ») range dans un chapitre repliable.</li>
         <li>Toutes vos actions sont enregistrées : le bouton ▶ rejoue la construction comme un film.</li>
       </ul>
     </div>
   </aside>
 </div>
+
+  <!-- ===== Page de chapitre (étiquettes des exercices) ===== -->
+  <div id="navModal" class="hidden">
+    <div id="navPanel">
+      <div id="navHead">
+        <span id="navTitle">Chapitre</span>
+        <button type="button" id="navClose" title="Fermer">✕</button>
+      </div>
+      <div id="navCards"></div>
+    </div>
+  </div>
+
+  <!-- ===== Visionneuse (lecture d'une construction en fenêtre) ===== -->
+  <div id="viewerModal" class="hidden">
+    <div id="viewerPanel">
+      <div id="viewerHead">
+        <span id="viewerTitle">Construction</span>
+        <button type="button" id="vClose" title="Fermer la visionneuse">✕</button>
+      </div>
+      <div id="vWrap">
+        <canvas id="vCanvas"></canvas>
+        <div id="vCaption" class="hidden"></div>
+      </div>
+      <div id="viewerBar">
+        <button type="button" id="vPlayPause" title="Lecture / Pause">⏸</button>
+        <button type="button" id="vPrev" title="Étape précédente">⏮</button>
+        <button type="button" id="vNext" title="Étape suivante">⏭</button>
+        <input type="range" id="vSlider" min="0" max="0" value="0" step="1">
+        <select id="vSpeed" title="Vitesse">
+          <option value="0.1">×0,1</option>
+          <option value="0.25">×0,25</option>
+          <option value="0.5">×0,5</option>
+          <option value="1" selected>×1</option>
+          <option value="2">×2</option>
+          <option value="4">×4</option>
+        </select>
+        <button type="button" id="vPrevExo" title="Exercice précédent du chapitre">◀ Exo</button>
+        <button type="button" id="vNextExo" title="Exercice suivant du chapitre">Exo ▶</button>
+        <button type="button" id="vEdit" title="Charger cette construction sur la feuille pour la modifier">✎ Modifier</button>
+        <span id="vCounter"></span>
+      </div>
+    </div>
+  </div>
 
 <script src="js/render.js"></script>
 <script src="js/examples.js"></script>
