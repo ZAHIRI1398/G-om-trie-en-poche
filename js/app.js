@@ -225,6 +225,7 @@ function updateContextBar() {
       : S.tool === "milieu" ? "Cliquez sur un segment pour placer son milieu (point nommé)."
       : S.tool === "dessin" ? "Cliquez-glissez pour dessiner à main levée."
       : S.tool === "fleche" ? "Cliquez-glissez pour tracer une flèche ; près de l'horizontale/verticale elle s'aligne automatiquement."
+      : S.tool === "cadre" ? "Cliquez-glissez pour encadrer une zone (titre, énoncé…) ; la couleur de remplissage se règle dans Style."
       : "Glissez un objet tracé pour le déplacer, le long d'un bord orange pour tracer, ou attrapez le crayon pour écrire.";
     return;
   }
@@ -357,6 +358,7 @@ function hitObject(wx, wy) {
     if ((o.type === "point" || o.type === "croix") && dist(wx, wy, o.x, o.y) < 10) return i;
     if (o.type === "text" && wx > o.x - 6 && wx < o.x + o.str.length * (o.fs || 15) * 0.6 + 6 &&
         wy > o.y - (o.fs || 15) * 1.1 && wy < o.y + (o.fs || 15) * 0.4) return i;
+    if (o.type === "cadre" && wx > o.x - 5 && wx < o.x + o.w + 5 && wy > o.y - 5 && wy < o.y + o.h + 5) return i;
     if (o.type === "stroke" && o.pts.some(pt => dist(wx, wy, pt[0], pt[1]) < 6)) return i;
     if (o.type === "polygone") {
       for (let j = 0; j < o.pts.length; j++) {
@@ -470,6 +472,13 @@ canvas.addEventListener("pointerdown", e => {
     return;
   }
 
+  /* ----- outil « cadre » : rectangle rempli ----- */
+  if (S.tool === "cadre") {
+    drag = { kind: "cadre", x1: x, y1: y, x2: x, y2: y };
+    drag.preview = { type: "cadre", x, y, w: 0, h: 0, c: S.ink, fill: S.fill };
+    return;
+  }
+
   /* ----- outils segment / droite / flèche : cliquez-glissez ----- */
   if (S.tool === "segment" || S.tool === "droite" || S.tool === "fleche") {
     const p0 = snapPt(x, y);
@@ -545,7 +554,7 @@ canvas.addEventListener("pointermove", e => {
     const ed = canEdge ? hitEdge(x, y) : null;
     const overObj = !ed && S.tool === "move" && hitObject(x, y) >= 0;
     canvas.style.cursor = ed ? "crosshair"
-      : (S.tool === "segment" || S.tool === "droite" || S.tool === "polygone" || S.tool === "milieu" || S.tool === "dessin" || S.tool === "fleche") ? "crosshair"
+      : (S.tool === "segment" || S.tool === "droite" || S.tool === "polygone" || S.tool === "milieu" || S.tool === "dessin" || S.tool === "fleche" || S.tool === "cadre") ? "crosshair"
       : overObj ? "move" : "default";
     if ((ed ? ed.inst : null) !== (S.hoverEdge ? S.hoverEdge.inst : null) || ed) {
       S.hoverEdge = ed; render();
@@ -599,6 +608,13 @@ canvas.addEventListener("pointermove", e => {
       drag.cur = { x, y };
       drag.preview = { type: "polyPreview", pts: drag.pts, cur: { x, y }, c: S.ink };
       break;
+    case "cadre":
+      drag.x2 = x; drag.y2 = y;
+      drag.preview = { type: "cadre",
+                       x: Math.min(drag.x1, x), y: Math.min(drag.y1, y),
+                       w: Math.abs(x - drag.x1), h: Math.abs(y - drag.y1),
+                       c: S.ink, fill: S.fill };
+      break;
     case "freeSeg": {
       const p2 = snapPt(x, y);
       let x2 = p2.x, y2 = p2.y;
@@ -646,6 +662,15 @@ canvas.addEventListener("pointerup", e => {
     case "edge":
       if (dist(drag.x1, drag.y1, drag.x2, drag.y2) > 4) {
         const st = { t: "segment", x1: drag.x1, y1: drag.y1, x2: drag.x2, y2: drag.y2, c: S.ink };
+        record(st); applyStep(st);
+      }
+      break;
+    case "cadre":
+      if (Math.abs(drag.x2 - drag.x1) > 6 && Math.abs(drag.y2 - drag.y1) > 6) {
+        const st = { t: "cadre",
+                     x: Math.min(drag.x1, drag.x2), y: Math.min(drag.y1, drag.y2),
+                     w: Math.abs(drag.x2 - drag.x1), h: Math.abs(drag.y2 - drag.y1),
+                     c: S.ink, fill: S.fill };
         record(st); applyStep(st);
       }
       break;
@@ -839,7 +864,7 @@ document.getElementById("clearBtn").onclick = () => {
 /* ============================================================
    LECTEUR D'ANIMATION
    ============================================================ */
-const DUR = { paper: 1, show: 350, hide: 300, pose: 600, segment: 750, fleche: 750, line: 900,
+const DUR = { paper: 1, show: 350, hide: 300, pose: 600, segment: 750, fleche: 750, cadre: 500, line: 900,
               arc: 850, circle: 1000, point: 400, croix: 300, text: 450,
               movePoint: 400, moveObj: 400, editText: 400 };
 function durOf(st) {
@@ -970,7 +995,7 @@ function animateStep(st, f) {
       else play.ghost = { x: st.cx + st.r * Math.cos(a), y: st.cy + st.r * Math.sin(a), angle: a + Math.PI / 2 };
       break;
     }
-    case "point": case "croix": case "text": case "stroke": case "line": case "polygone":
+    case "point": case "croix": case "text": case "stroke": case "line": case "polygone": case "cadre":
       play.partial = { obj: { type: st.t, ...st }, frac: f };
       if (st.t === "stroke") {
         const i = clamp(Math.floor(st.pts.length * f), 0, st.pts.length - 1);
@@ -1369,7 +1394,7 @@ function vAnimate(st, f) {
       else V.ghost = { x: st.cx + st.r * Math.cos(a), y: st.cy + st.r * Math.sin(a), angle: a + Math.PI / 2 };
       break;
     }
-    case "point": case "croix": case "text": case "stroke": case "line": case "polygone":
+    case "point": case "croix": case "text": case "stroke": case "line": case "polygone": case "cadre":
       V.partial = { obj: { type: st.t, ...st }, frac: f };
       if (st.t === "stroke") {
         const i = clamp(Math.floor(st.pts.length * f), 0, st.pts.length - 1);

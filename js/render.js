@@ -186,6 +186,14 @@ function drawObject(ctx, o, frac = 1) {
       ctx.stroke();
       break;
     }
+    case "cadre": {   // rectangle rempli (encadré de titre, énoncé…)
+      const w = o.w * frac, h = o.h * frac;
+      ctx.fillStyle = hexToRgba(o.fill || "#4a90d9", 0.4);
+      ctx.fillRect(o.x, o.y, w, h);
+      ctx.strokeStyle = o.c || INK; ctx.lineWidth = 1.4;
+      ctx.strokeRect(o.x, o.y, w, h);
+      break;
+    }
     case "polygone": {
       const P = o.pts;
       let total = 0; const cum = [0];

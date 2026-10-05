@@ -124,6 +124,15 @@ bundle += `
   S.tool = "move";
   console.log("[2f] flèches H/V/oblique OK");
 
+  // 2h. Cadre rempli (encadré de titre)
+  S.tool = "cadre";
+  pd(ev(80, 300)); pm(ev(220, 360)); pu(ev(220, 360));
+  const cd = S.objects.find(o => o.type === "cadre");
+  if (!cd || cd.x !== 80 || cd.y !== 300 || cd.w !== 140 || cd.h !== 60)
+    throw new Error("cadre KO : " + JSON.stringify(cd));
+  S.tool = "move";
+  console.log("[2h] cadre OK :", JSON.stringify(cd));
+
   // 2g. Modifier un texte existant par double-clic
   const dbc = __listeners["paper:dblclick"];
   S.script.push({ t: "text", x: 100, y: 100, str: "avant" });
