@@ -252,6 +252,14 @@ bundle += `
   addToBiblio("Test", [{ t: "paper", grid: "carreaux" }]);      // dédoublonnage
   b = getBiblio();
   if (b.length !== 1 || b[0].steps.length !== 1) throw new Error("biblio dédoublonnage KO");
+  addToBiblio("Exo 1", [{ t: "point", x: 0, y: 0, label: "P" }], "Triangles");
+  addToBiblio("Exo 2", [{ t: "point", x: 1, y: 1, label: "Q" }], "Triangles");
+  addToBiblio("Exo 3", [{ t: "point", x: 2, y: 2, label: "R" }], "Cercles");
+  b = getBiblio();
+  const cats = new Set(b.map(e => e.cat || ""));
+  if (b.length !== 4 || !cats.has("Triangles") || !cats.has("Cercles"))
+    throw new Error("biblio regroupement KO : " + JSON.stringify(cats));
+  if (b.filter(e => e.cat === "Triangles").length !== 2) throw new Error("chapitre Triangles incomplet");
   S.script = b[0].steps; rebuild();
   if (S.grid !== "carreaux") throw new Error("biblio reload KO");
   console.log("[10] bibliothèque OK");

@@ -105,6 +105,9 @@ html, body { height: 100%; font-family: "Segoe UI", Arial, sans-serif; font-size
 }
 #biblioList li { padding: 2px 0; }
 #biblioList .bib-head { font-weight: bold; color: #5a6b7d; margin-top: 4px; }
+#biblioList .bib-cat { font-weight: bold; color: #2c5f8a; cursor: pointer; margin-top: 2px; }
+#biblioList .bib-cat:hover { color: #1a5fb4; }
+#biblioList .bib-sub { padding-left: 14px; }
 .bib-link { color: #1a5fb4; text-decoration: none; cursor: pointer; }
 .bib-link:hover { text-decoration: underline; }
 .bib-del { float: right; border: none; background: none; color: #a33; cursor: pointer; font-size: 13px; padding: 0 2px; }

@@ -1076,7 +1076,7 @@ document.getElementById("importFile").onchange = e => {
       const steps = JSON.parse(rd.result);
       if (!Array.isArray(steps)) throw new Error("tableau attendu");
       loadSteps(steps);
-      addToBiblio(f.name.replace(/\.[^.]+$/, ""), steps);   // devient un lien de la bibliothèque
+      addToBiblio(f.name.replace(/\.[^.]+$/, ""), steps, "Importés");   // devient un lien de la bibliothèque
       scriptMsg.style.color = "#2a7";
       scriptMsg.textContent = `Importé et ajouté à la bibliothèque : ${steps.length} étapes.`;
       setTimeout(() => { scriptMsg.textContent = ""; scriptMsg.style.color = "#a33"; }, 3000);
@@ -1126,11 +1126,12 @@ function getBiblio() {
   catch { return []; }
 }
 function setBiblio(arr) { localStorage.setItem(BIBLIO_KEY, JSON.stringify(arr)); }
-function addToBiblio(name, steps) {
-  const arr = getBiblio().filter(e => e.name !== name);   // dédoublonner
-  arr.push({ name, steps });
+function addToBiblio(name, steps, cat = "") {
+  const arr = getBiblio().filter(e => !(e.name === name && (e.cat || "") === cat));   // dédoublonner
+  arr.push({ name, steps, cat });
   setBiblio(arr); renderBiblio();
 }
+const bibCollapsed = {};
 function renderBiblio() {
   const ul = document.getElementById("biblioList");
   ul.innerHTML = "";
@@ -1146,31 +1147,57 @@ function renderBiblio() {
     li.appendChild(a); ul.appendChild(li);
     return li;
   };
+  const delBtn = i => {
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "bib-del"; del.textContent = "×";
+    del.title = "Retirer de la bibliothèque";
+    del.onclick = e => {
+      e.stopPropagation();
+      const arr = getBiblio(); arr.splice(i, 1); setBiblio(arr); renderBiblio();
+    };
+    return del;
+  };
   head("Constructions d'exemple");
   for (const [nom, k] of BIBLIO_EXEMPLES)
     link(nom, () => { loadSteps(EXAMPLES[k]()); scriptMsg.textContent = ""; });
   const user = getBiblio();
-  if (user.length) {
-    head("Mes constructions");
-    user.forEach((entry, i) => {
+  if (!user.length) return;
+  head("Mes constructions");
+  // regroupement par chapitre (cat) — sections repliables
+  const groups = new Map();
+  user.forEach((entry, i) => {
+    const c = entry.cat || "Divers";
+    if (!groups.has(c)) groups.set(c, []);
+    groups.get(c).push({ entry, i });
+  });
+  for (const [cat, items] of groups) {
+    if (groups.size > 1 || cat !== "Divers") {
+      const li = document.createElement("li");
+      li.className = "bib-cat";
+      const open = !bibCollapsed[cat];
+      li.textContent = (open ? "▾ " : "▸ ") + cat;
+      li.title = "Cliquer pour replier/déplier";
+      li.onclick = () => { bibCollapsed[cat] = open; renderBiblio(); };
+      ul.appendChild(li);
+      if (!open) continue;
+    }
+    for (const { entry, i } of items) {
       const li = link(entry.name, () => { loadSteps(entry.steps); scriptMsg.textContent = ""; });
-      const del = document.createElement("button");
-      del.type = "button"; del.className = "bib-del"; del.textContent = "×";
-      del.title = "Retirer de la bibliothèque";
-      del.onclick = e => {
-        e.stopPropagation();
-        const arr = getBiblio(); arr.splice(i, 1); setBiblio(arr); renderBiblio();
-      };
-      li.appendChild(del);
-    });
+      li.classList.add("bib-sub");
+      li.appendChild(delBtn(i));
+    }
   }
 }
 document.getElementById("saveBiblioBtn").onclick = () => {
   if (!S.script.length) { scriptMsg.textContent = "Rien à enregistrer : le script est vide."; return; }
-  const name = prompt("Nom de la construction :", "Ma construction");
+  const name = prompt("Nom de la construction.\nPour la ranger dans un chapitre, écrivez « Chapitre / Nom » :", "Ma construction");
   if (name && name.trim()) {
-    addToBiblio(name.trim(), S.script.slice());
-    scriptMsg.style.color = "#2a7"; scriptMsg.textContent = `« ${name.trim()} » ajouté à la bibliothèque.`;
+    const parts = name.split("/").map(s => s.trim()).filter(Boolean);
+    const nom = parts.pop();
+    const cat = parts.join(" / ");
+    addToBiblio(nom, S.script.slice(), cat);
+    scriptMsg.style.color = "#2a7";
+    scriptMsg.textContent = `« ${nom} » ajouté à la bibliothèque${cat ? " (" + cat + ")" : ""}.`;
     setTimeout(() => { scriptMsg.textContent = ""; scriptMsg.style.color = "#a33"; }, 3000);
   }
 };
