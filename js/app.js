@@ -334,6 +334,16 @@ function hitEdge(wx, wy) {
   }
   return best;
 }
+function hitText(wx, wy) {
+  // zone généreuse autour d'un texte : retourne l'objet texte le plus récent touché
+  for (let i = S.objects.length - 1; i >= 0; i--) {
+    const o = S.objects[i];
+    if (o.type !== "text") continue;
+    const fs = o.fs || 15, w = (o.str ? o.str.length : 1) * fs * 0.6;
+    if (wx > o.x - 12 && wx < o.x + w + 12 && wy > o.y - fs * 1.5 && wy < o.y + fs * 0.7) return o;
+  }
+  return null;
+}
 function hitObject(wx, wy) {
   for (let i = S.objects.length - 1; i >= 0; i--) {
     const o = S.objects[i];
@@ -345,7 +355,8 @@ function hitObject(wx, wy) {
       if (Math.abs((wx - o.x1) * dy - (wy - o.y1) * dx) / L < 7) return i;
     }
     if ((o.type === "point" || o.type === "croix") && dist(wx, wy, o.x, o.y) < 10) return i;
-    if (o.type === "text" && wx > o.x - 4 && wx < o.x + o.str.length * (o.fs || 15) * 0.55 && wy > o.y - (o.fs || 15) && wy < o.y + 5) return i;
+    if (o.type === "text" && wx > o.x - 6 && wx < o.x + o.str.length * (o.fs || 15) * 0.6 + 6 &&
+        wy > o.y - (o.fs || 15) * 1.1 && wy < o.y + (o.fs || 15) * 0.4) return i;
     if (o.type === "stroke" && o.pts.some(pt => dist(wx, wy, pt[0], pt[1]) < 6)) return i;
     if (o.type === "polygone") {
       for (let j = 0; j < o.pts.length; j++) {
@@ -406,11 +417,9 @@ canvas.addEventListener("pointerdown", e => {
     return;
   }
   if (S.tool === "texte") {
-    const idx = hitObject(x, y);
-    if (idx >= 0 && S.objects[idx].type === "text") {
-      const o = S.objects[idx];
-      openTextInput(o.x, o.y, o);
-    } else openTextInput(x, y);
+    const o = hitText(x, y);
+    if (o) openTextInput(o.x, o.y, o);
+    else openTextInput(x, y);
     return;
   }
   if (S.tool === "gomme") {
@@ -682,11 +691,15 @@ canvas.addEventListener("dblclick", e => {
   // double-clic sur un texte existant : le modifier
   if (play.active) return;
   const { x, y } = canvasPos(e);
-  const idx = hitObject(x, y);
-  if (idx >= 0 && S.objects[idx].type === "text") {
-    const o = S.objects[idx];
-    openTextInput(o.x, o.y, o);
-  }
+  const o = hitText(x, y);
+  if (o) openTextInput(o.x, o.y, o);
+});
+canvas.addEventListener("contextmenu", e => {
+  // clic droit sur un texte : le modifier (autre chemin fiable)
+  if (play.active) return;
+  const { x, y } = canvasPos(e);
+  const o = hitText(x, y);
+  if (o) { e.preventDefault(); openTextInput(o.x, o.y, o); }
 });
 function commitPoly() {
   const st = { t: "polygone", pts: drag.pts.slice(), c: S.ink, fill: S.fill };
