@@ -1387,18 +1387,27 @@ document.getElementById("bibFile").onchange = e => {
 const CLOUD_API = "https://geometrie-biblio.adamyamine1398.workers.dev";
 const cloudCodeEl = document.getElementById("cloudCode");
 cloudCodeEl.value = localStorage.getItem("iep_cloud_code") || "";
-cloudCodeEl.onchange = () => localStorage.setItem("iep_cloud_code", cloudCodeEl.value.trim());
+/* normalise le code : minuscules, sans accents, espaces -> tirets */
+function cloudCode() {
+  return cloudCodeEl.value.trim().toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+cloudCodeEl.onchange = () => {
+  cloudCodeEl.value = cloudCode();                    // afficher la forme normalisée
+  localStorage.setItem("iep_cloud_code", cloudCodeEl.value);
+};
 
 function cloudReady() {
   if (typeof fetch !== "function") return false;
   if (!CLOUD_API) { scriptMsg.textContent = "Cloud non configuré : renseignez CLOUD_API dans js/app.js."; return false; }
-  if (!cloudCodeEl.value.trim()) { scriptMsg.textContent = "Entrez d'abord un code de classe."; return false; }
+  if (cloudCode().length < 3) { scriptMsg.textContent = "Entrez un code de classe (lettres/chiffres, 3 caractères min)."; return false; }
   return true;
 }
 async function cloudSave(silent = false) {
   if (!cloudReady()) return false;
   try {
-    const r = await fetch(`${CLOUD_API}/api/biblio?code=${encodeURIComponent(cloudCodeEl.value.trim())}`, {
+    const r = await fetch(`${CLOUD_API}/api/biblio?code=${encodeURIComponent(cloudCode())}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items: getBiblio() }),
     });
@@ -1417,7 +1426,7 @@ async function cloudSave(silent = false) {
 async function cloudLoad() {
   if (!cloudReady()) return;
   try {
-    const r = await fetch(`${CLOUD_API}/api/biblio?code=${encodeURIComponent(cloudCodeEl.value.trim())}`);
+    const r = await fetch(`${CLOUD_API}/api/biblio?code=${encodeURIComponent(cloudCode())}`);
     if (!r.ok) throw 0;
     const data = await r.json();
     const n = mergeBiblio(data.items || []);
@@ -1434,7 +1443,7 @@ document.getElementById("cloudLoadBtn").onclick = cloudLoad;
 let cloudTimer = null;
 function cloudAutoSave() {
   if (!document.getElementById("cloudAuto").checked || !CLOUD_API
-      || !cloudCodeEl.value.trim() || typeof fetch !== "function") return;
+      || cloudCode().length < 3 || typeof fetch !== "function") return;
   clearTimeout(cloudTimer);
   cloudTimer = setTimeout(() => cloudSave(true), 1500);
 }

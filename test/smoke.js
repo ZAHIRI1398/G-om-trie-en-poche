@@ -374,6 +374,11 @@ bundle += `
   if (mergeBiblio("pas un tableau") !== -1) throw new Error("fichier invalide accepté");
   console.log("[17] export/import bibliothèque OK");
 
+  // 18. Code de classe normalisé (espaces, accents, majuscules)
+  document.getElementById("cloudCode").value = "Ots B Éléà!";
+  if (cloudCode() !== "ots-b-elea") throw new Error("cloudCode KO : " + cloudCode());
+  console.log("[18] normalisation du code de classe OK");
+
   console.log("TOUS LES TESTS PASSENT");
 })();
 `;
