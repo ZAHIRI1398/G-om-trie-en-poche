@@ -1533,12 +1533,19 @@ function vRender() {
   const w = vCanvas.clientWidth, h = vCanvas.clientHeight;
   if (!w || !h) return;
   drawGrid(vCtx, w, h, V.grid);
+  // le contenu a été créé sur la feuille d'édition : on le reproduit à
+  // l'échelle et centré pour retrouver exactement la même disposition
+  const bw = canvas.clientWidth || w, bh = canvas.clientHeight || h;
+  const zoom = Math.min(w / bw, h / bh);
+  const ox = (w - bw * zoom) / 2, oy = (h - bh * zoom) / 2;
+  vCtx.save();
+  vCtx.translate(ox, oy); vCtx.scale(zoom, zoom);
   if (V.bgImg) {
-    const sc = Math.min(w / V.bgImg.width, h / V.bgImg.height) * V.bgS;
+    const sc = Math.min(bw / V.bgImg.width, bh / V.bgImg.height) * V.bgS;
     const iw = V.bgImg.width * sc, ih = V.bgImg.height * sc;
     vCtx.save();
     vCtx.globalAlpha = (V.partial && V.partial.bgA != null) ? V.partial.bgA : V.bgAlpha;
-    vCtx.drawImage(V.bgImg, (w - iw) / 2 + V.bgX, (h - ih) / 2 + V.bgY, iw, ih);
+    vCtx.drawImage(V.bgImg, (bw - iw) / 2 + V.bgX, (bh - ih) / 2 + V.bgY, iw, ih);
     vCtx.restore();
   }
   drawObjects(vCtx, V.objects);
@@ -1555,6 +1562,7 @@ function vRender() {
     const g = { kind: "crayon", x: V.ghost.x, y: V.ghost.y, angle: V.ghost.angle };
     vCtx.save(); INSTRUMENTS.crayon.draw(vCtx, g, false); vCtx.restore();
   }
+  vCtx.restore();   // fin du zoom feuille d'édition
 }
 function vFinish() { V.playing = false; V.paused = false; vUI(); }
 function vUI() {
