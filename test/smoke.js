@@ -319,7 +319,7 @@ bundle += `
 
   // 14. Image dans le script : bgimg + bgpose rejoués au rebuild
   S.script = [{ t: "paper", grid: "blanc" },
-              { t: "bgimg", src: "data:image/png;base64,x", a: 0.5 },
+              { t: "bgimg", src: "data:image/png;base64,x", a: 0.5, _img: {} },  // "_img":{} = relique JSON
               { t: "bgpose", x: 40, y: 20, s: 2, a: 0.4 }];
   rebuild();
   if (!bgImg) throw new Error("bgimg non chargée au rebuild");
@@ -347,6 +347,19 @@ bundle += `
   if (V.idx !== 1) throw new Error("lecture ×1 trop rapide : idx=" + V.idx);
   closeViewer();
   console.log("[15] vitesse visionneuse OK");
+
+  // 16. Visionneuse : une étape bgimg (avec relique "_img" du JSON) ne doit pas figer la lecture
+  openViewer("test img", [{ t: "paper" },
+                        { t: "bgimg", src: "data:image/png;base64,x", a: 0.5, _img: {} },
+                        { t: "text", x: 50, y: 50, str: "après" }]);
+  V.t0 = 0; vTick(50);                        // paper (1 ms) -> bgimg
+  V.t0 = 0; vTick(600);                       // bgimg 550 ms -> texte
+  if (V.idx !== 2) throw new Error("lecture figée sur bgimg : idx=" + V.idx);
+  V.t0 = 0; vTick(600);                       // texte 450 ms -> fin
+  if (!V.objects.some(o => o.type === "text" && o.str === "après"))
+    throw new Error("texte après image absent dans la visionneuse");
+  closeViewer();
+  console.log("[16] visionneuse + image OK");
 
   console.log("TOUS LES TESTS PASSENT");
 })();

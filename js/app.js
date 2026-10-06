@@ -169,11 +169,16 @@ function overImg(x, y) {
   return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 }
 
-/* charge l'image d'une étape bgimg (mise en cache sur l'étape) */
+/* charge l'image d'une étape bgimg — cache hors-script (WeakMap) pour
+   ne pas polluer le JSON : un "_img" sérialisé deviendrait {} */
+const stepImgCache = new WeakMap();
 function loadStepImage(st, done) {
-  if (st._img) { done(); return; }
+  const c = stepImgCache.get(st);
+  if (c && c !== "loading") { done(c); return; }
+  if (c === "loading") return;                       // chargement déjà lancé
+  stepImgCache.set(st, "loading");
   const im = new Image();
-  im.onload = () => { st._img = im; done(); render(); if (V.open) vRender(); };
+  im.onload = () => { stepImgCache.set(st, im); done(im); render(); if (V.open) vRender(); };
   im.src = st.src;
 }
 
@@ -181,7 +186,7 @@ function loadStepImage(st, done) {
 function applyStep(st, stepIdx = S.script.length - 1) {
   switch (st.t) {
     case "bgimg":
-      loadStepImage(st, () => { bgImg = st._img; });
+      loadStepImage(st, im => { bgImg = im; });
       bgX = 0; bgY = 0; bgS = 1;
       if (st.a != null) bgAlpha = st.a;
       break;
@@ -1088,7 +1093,7 @@ function animateStep(st, f) {
       if (f >= 1) S.inst[st.i].visible = false;
       break;
     case "bgimg":
-      loadStepImage(st, () => { bgImg = st._img; });
+      loadStepImage(st, im => { bgImg = im; });
       play.partial = { bgA: (st.a != null ? st.a : bgAlpha) * f };   // fondu d'apparition
       break;
     case "bgpose": {
@@ -1373,7 +1378,7 @@ const V = { open: false, steps: [], idx: 0, playing: false, paused: false,
 function vApply(st, i) {
   switch (st.t) {
     case "bgimg":
-      loadStepImage(st, () => { V.bgImg = st._img; });
+      loadStepImage(st, im => { V.bgImg = im; });
       V.bgX = 0; V.bgY = 0; V.bgS = 1;
       if (st.a != null) V.bgAlpha = st.a;
       break;
@@ -1512,7 +1517,7 @@ function vAnimate(st, f) {
       if (f >= 1) V.inst[st.i].visible = false;
       break;
     case "bgimg":
-      loadStepImage(st, () => { V.bgImg = st._img; });
+      loadStepImage(st, im => { V.bgImg = im; });
       V.partial = { bgA: (st.a != null ? st.a : V.bgAlpha) * f };
       break;
     case "bgpose": {
