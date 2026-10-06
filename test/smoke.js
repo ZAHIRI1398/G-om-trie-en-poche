@@ -298,6 +298,17 @@ bundle += `
   closeNav();
   console.log("[12] page de chapitre OK");
 
+  // 13. Image de fond : déplacement par glisser (outil Manipuler)
+  S.tool = "move";
+  bgImg = { width: 800, height: 600 };
+  bgX = 0; bgY = 0; bgS = 1;
+  pd(ev(850, 500));            // dans l'image, hors de tout objet
+  if (!drag || drag.kind !== "imgMove") throw new Error("drag imgMove attendu : " + JSON.stringify(drag && drag.kind));
+  pm(ev(900, 530)); pu(ev(900, 530));
+  if (bgX !== 50 || bgY !== 30) throw new Error("image non déplacée : bgX=" + bgX + " bgY=" + bgY);
+  bgImg = null;
+  console.log("[13] déplacement de l'image de fond OK");
+
   console.log("TOUS LES TESTS PASSENT");
 })();
 `;

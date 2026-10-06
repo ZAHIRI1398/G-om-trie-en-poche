@@ -51,6 +51,7 @@ let S = {
 let drag = null;          // état du glisser en cours
 let bgImg = null;         // image d'exercice en fond
 let bgAlpha = 0.65;
+let bgX = 0, bgY = 0, bgS = 1;   // position et zoom de l'image de fond
 let play = { active: false, idx: 0, playing: false, paused: false,
              t0: 0, elapsed: 0, speed: 1, loop: false, partial: null, poseFrom: null };
 
@@ -71,10 +72,9 @@ function render() {
 
   // image d'exercice en fond (centrée, ajustée à la feuille)
   if (bgImg) {
-    const sc = Math.min(w / bgImg.width, h / bgImg.height);
-    const iw = bgImg.width * sc, ih = bgImg.height * sc;
+    const r = imgRect(w, h);
     ctx.save(); ctx.globalAlpha = bgAlpha;
-    ctx.drawImage(bgImg, (w - iw) / 2, (h - ih) / 2, iw, ih);
+    ctx.drawImage(bgImg, r.x, r.y, r.w, r.h);
     ctx.restore();
   }
 
@@ -156,6 +156,16 @@ function snapPt(x, y) {
 function canvasPos(e) {
   const r = canvas.getBoundingClientRect();
   return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function imgRect(w, h) {
+  const sc = Math.min(w / bgImg.width, h / bgImg.height) * bgS;
+  const iw = bgImg.width * sc, ih = bgImg.height * sc;
+  return { x: (w - iw) / 2 + bgX, y: (h - ih) / 2 + bgY, w: iw, h: ih };
+}
+function overImg(x, y) {
+  if (!bgImg) return false;
+  const r = imgRect(canvas.clientWidth, canvas.clientHeight);
+  return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 }
 
 /* ---------------- Application d'une étape (instantané) ---------------- */
@@ -523,6 +533,12 @@ canvas.addEventListener("pointerdown", e => {
     return;
   }
 
+  /* ----- déplacer l'image de fond (outil Manipuler) ----- */
+  if (S.tool === "move" && overImg(x, y)) {
+    drag = { kind: "imgMove", sx: x, sy: y };
+    return;
+  }
+
   // clic sur la feuille : dessin libre si le crayon est sorti, sinon désélection
   if (S.inst.crayon.visible) {
     S.selected = "crayon"; updateContextBar();
@@ -553,9 +569,10 @@ canvas.addEventListener("pointermove", e => {
     const canEdge = S.tool === "move" || S.tool === "segment";
     const ed = canEdge ? hitEdge(x, y) : null;
     const overObj = !ed && S.tool === "move" && hitObject(x, y) >= 0;
+    const overBg = !ed && !overObj && S.tool === "move" && overImg(x, y);
     canvas.style.cursor = ed ? "crosshair"
       : (S.tool === "segment" || S.tool === "droite" || S.tool === "polygone" || S.tool === "milieu" || S.tool === "dessin" || S.tool === "fleche" || S.tool === "cadre") ? "crosshair"
-      : overObj ? "move" : "default";
+      : (overObj || overBg) ? "move" : "default";
     if ((ed ? ed.inst : null) !== (S.hoverEdge ? S.hoverEdge.inst : null) || ed) {
       S.hoverEdge = ed; render();
     } else if (rp.visible && rappAngle != null) render();
@@ -646,6 +663,10 @@ canvas.addEventListener("pointermove", e => {
     case "pointMove":
       drag.obj.x = x; drag.obj.y = y;
       break;
+    case "imgMove":
+      bgX += x - drag.sx; bgY += y - drag.sy;
+      drag.sx = x; drag.sy = y;
+      break;
   }
   render();
 });
@@ -706,6 +727,8 @@ canvas.addEventListener("pointerup", e => {
     case "pointMove":
       record({ t: "movePoint", label: drag.obj.label, x: drag.obj.x, y: drag.obj.y });
       break;
+    case "imgMove":
+      break;   // l'image de fond n'est pas dans le script
   }
   if (drag && drag.kind !== "poly") drag = null;   // le polygone reste actif entre les clics
   render();
@@ -819,11 +842,22 @@ imgFile.onchange = e => {
 };
 document.getElementById("imgOpacity").oninput = e => { bgAlpha = +e.target.value; render(); };
 document.getElementById("imgRemove").onclick = () => {
-  bgImg = null;
+  bgImg = null; bgX = 0; bgY = 0; bgS = 1;
   document.getElementById("imgRemove").classList.add("hidden");
+  document.getElementById("imgCenter").classList.add("hidden");
   document.getElementById("imgOpRow").style.display = "none";
   render();
 };
+document.getElementById("imgCenter").onclick = () => { bgX = 0; bgY = 0; bgS = 1; render(); };
+// molette sur l'image (outil Manipuler) : zoomer / dézoomer
+canvas.addEventListener("wheel", e => {
+  if (play.active || S.tool !== "move") return;
+  const { x, y } = canvasPos(e);
+  if (!overImg(x, y)) return;
+  e.preventDefault();
+  bgS = clamp(bgS * (e.deltaY < 0 ? 1.12 : 0.89), 0.05, 10);
+  render();
+}, { passive: false });
 // collage direct d'une capture d'écran (Ctrl+V)
 document.addEventListener("paste", e => {
   for (const item of e.clipboardData.items) {
@@ -835,8 +869,9 @@ function loadBgImage(file) {
   rd.onload = () => {
     const im = new Image();
     im.onload = () => {
-      bgImg = im;
+      bgImg = im; bgX = 0; bgY = 0; bgS = 1;
       document.getElementById("imgRemove").classList.remove("hidden");
+      document.getElementById("imgCenter").classList.remove("hidden");
       document.getElementById("imgOpRow").style.display = "flex";
       render();
     };
