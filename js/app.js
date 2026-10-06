@@ -73,7 +73,8 @@ function render() {
   // image d'exercice en fond (centrée, ajustée à la feuille)
   if (bgImg) {
     const r = imgRect(w, h);
-    ctx.save(); ctx.globalAlpha = bgAlpha;
+    ctx.save();
+    ctx.globalAlpha = (play.partial && play.partial.bgA != null) ? play.partial.bgA : bgAlpha;
     ctx.drawImage(bgImg, r.x, r.y, r.w, r.h);
     ctx.restore();
   }
@@ -168,9 +169,26 @@ function overImg(x, y) {
   return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 }
 
+/* charge l'image d'une étape bgimg (mise en cache sur l'étape) */
+function loadStepImage(st, done) {
+  if (st._img) { done(); return; }
+  const im = new Image();
+  im.onload = () => { st._img = im; done(); render(); if (V.open) vRender(); };
+  im.src = st.src;
+}
+
 /* ---------------- Application d'une étape (instantané) ---------------- */
 function applyStep(st, stepIdx = S.script.length - 1) {
   switch (st.t) {
+    case "bgimg":
+      loadStepImage(st, () => { bgImg = st._img; });
+      bgX = 0; bgY = 0; bgS = 1;
+      if (st.a != null) bgAlpha = st.a;
+      break;
+    case "bgpose":
+      bgX = st.x; bgY = st.y; bgS = st.s;
+      if (st.a != null) bgAlpha = st.a;
+      break;
     case "paper": S.grid = st.grid; document.getElementById("gridSelect").value = st.grid; break;
     case "show": S.inst[st.i].visible = true; break;
     case "hide": S.inst[st.i].visible = false; break;
@@ -206,6 +224,7 @@ function rebuild() {
   S.labelN = 0;
   S.selected = null;
   rappAngle = null;
+  bgImg = null; bgX = 0; bgY = 0; bgS = 1;
   for (let i = 0; i < S.script.length; i++) applyStep(S.script[i], i);
   render();
   updateContextBar();
@@ -728,7 +747,8 @@ canvas.addEventListener("pointerup", e => {
       record({ t: "movePoint", label: drag.obj.label, x: drag.obj.x, y: drag.obj.y });
       break;
     case "imgMove":
-      break;   // l'image de fond n'est pas dans le script
+      record({ t: "bgpose", x: bgX, y: bgY, s: bgS, a: bgAlpha });
+      break;
   }
   if (drag && drag.kind !== "poly") drag = null;   // le polygone reste actif entre les clics
   render();
@@ -843,6 +863,8 @@ imgFile.onchange = e => {
 document.getElementById("imgOpacity").oninput = e => { bgAlpha = +e.target.value; render(); };
 document.getElementById("imgRemove").onclick = () => {
   bgImg = null; bgX = 0; bgY = 0; bgS = 1;
+  S.script = S.script.filter(s => s.t !== "bgimg" && s.t !== "bgpose");   // retirer l'étape du script
+  syncScriptUI();
   document.getElementById("imgRemove").classList.add("hidden");
   document.getElementById("imgCenter").classList.add("hidden");
   document.getElementById("imgOpRow").style.display = "none";
@@ -850,12 +872,15 @@ document.getElementById("imgRemove").onclick = () => {
 };
 document.getElementById("imgCenter").onclick = () => { bgX = 0; bgY = 0; bgS = 1; render(); };
 // molette sur l'image (outil Manipuler) : zoomer / dézoomer
+let bgPoseTimer = null;
 canvas.addEventListener("wheel", e => {
   if (play.active || S.tool !== "move") return;
   const { x, y } = canvasPos(e);
   if (!overImg(x, y)) return;
   e.preventDefault();
   bgS = clamp(bgS * (e.deltaY < 0 ? 1.12 : 0.89), 0.05, 10);
+  clearTimeout(bgPoseTimer);
+  bgPoseTimer = setTimeout(() => record({ t: "bgpose", x: bgX, y: bgY, s: bgS, a: bgAlpha }), 500);
   render();
 }, { passive: false });
 // collage direct d'une capture d'écran (Ctrl+V)
@@ -870,6 +895,7 @@ function loadBgImage(file) {
     const im = new Image();
     im.onload = () => {
       bgImg = im; bgX = 0; bgY = 0; bgS = 1;
+      record({ t: "bgimg", src: rd.result, a: bgAlpha });   // l'image devient une étape du script
       document.getElementById("imgRemove").classList.remove("hidden");
       document.getElementById("imgCenter").classList.remove("hidden");
       document.getElementById("imgOpRow").style.display = "flex";
@@ -901,7 +927,7 @@ document.getElementById("clearBtn").onclick = () => {
    ============================================================ */
 const DUR = { paper: 1, show: 350, hide: 300, pose: 600, segment: 750, fleche: 750, cadre: 500, line: 900,
               arc: 850, circle: 1000, point: 400, croix: 300, text: 450,
-              movePoint: 400, moveObj: 400, editText: 400 };
+              movePoint: 400, moveObj: 400, editText: 400, bgimg: 550, bgpose: 450 };
 function durOf(st) {
   if (st.t === "stroke") return clamp(st.pts.length * 22, 300, 2500);
   if (st.t === "polygone") return 400 + st.pts.length * 160;
@@ -920,6 +946,7 @@ function enterPlay(fromIdx = 0) {
   // reconstruire l'état au début de l'étape fromIdx
   const keep = S.script.slice();
   S.objects = []; S.inst = defaultInstruments(); S.grid = "blanc"; S.labelN = 0;
+  bgImg = null; bgX = 0; bgY = 0; bgS = 1;
   for (let i = 0; i < fromIdx; i++) applyStep(keep[i]);
   playOverlay.classList.remove("hidden");
   document.getElementById("btnExitPlay").classList.remove("hidden");
@@ -948,6 +975,7 @@ function startStep() {
   showCaption(st ? st.msg : null);
   play.poseFrom = null; play.lastF = 0; play.objRef = null;
   if (st.t === "pose") play.poseFrom = Object.assign({}, S.inst[st.i]);
+  if (st.t === "bgpose") play.poseFrom = { x: bgX, y: bgY, s: bgS, a: bgAlpha };
   if (st.t === "moveObj") play.objRef = S.objects.find(o => o._step === st.ref) || null;
   if (st.t === "arc" || st.t === "circle") {
     // placer le compas sur l'arc si visible
@@ -1059,6 +1087,16 @@ function animateStep(st, f) {
       play.partial = { instAlpha: st.i, frac: 1 - f };
       if (f >= 1) S.inst[st.i].visible = false;
       break;
+    case "bgimg":
+      loadStepImage(st, () => { bgImg = st._img; });
+      play.partial = { bgA: (st.a != null ? st.a : bgAlpha) * f };   // fondu d'apparition
+      break;
+    case "bgpose": {
+      const from = play.poseFrom || (play.poseFrom = { x: bgX, y: bgY, s: bgS, a: bgAlpha });
+      bgX = lerp(from.x, st.x, f); bgY = lerp(from.y, st.y, f); bgS = lerp(from.s, st.s, f);
+      if (st.a != null) bgAlpha = lerp(from.a, st.a, f);
+      break;
+    }
     default: break;
   }
 }
@@ -1112,7 +1150,11 @@ playSlider.oninput = () => {
   stepCounter.textContent = `${play.idx} / ${S.script.length} étapes`;
   render();
 };
-document.getElementById("speedSel").onchange = e => { play.speed = +e.target.value; };
+document.getElementById("speedSel").onchange = e => {
+  play.speed = +e.target.value;
+  V.speed = play.speed;                                    // vitesse partagée avec la visionneuse
+  document.getElementById("vSpeed").value = e.target.value;
+};
 document.getElementById("loopChk").onchange = e => { play.loop = e.target.checked; };
 document.getElementById("btnExitPlay").onclick = exitPlay;
 
@@ -1325,10 +1367,20 @@ const V = { open: false, steps: [], idx: 0, playing: false, paused: false,
             t0: 0, elapsed: 0, speed: 1,
             objects: [], inst: null, grid: "blanc",
             partial: null, ghost: null, poseFrom: null, lastF: 0, objRef: null,
-            siblings: null, sibIdx: -1 };
+            siblings: null, sibIdx: -1,
+            bgImg: null, bgAlpha: 0.65, bgX: 0, bgY: 0, bgS: 1 };
 
 function vApply(st, i) {
   switch (st.t) {
+    case "bgimg":
+      loadStepImage(st, () => { V.bgImg = st._img; });
+      V.bgX = 0; V.bgY = 0; V.bgS = 1;
+      if (st.a != null) V.bgAlpha = st.a;
+      break;
+    case "bgpose":
+      V.bgX = st.x; V.bgY = st.y; V.bgS = st.s;
+      if (st.a != null) V.bgAlpha = st.a;
+      break;
     case "paper": V.grid = st.grid; break;
     case "show": V.inst[st.i].visible = true; break;
     case "hide": V.inst[st.i].visible = false; break;
@@ -1368,6 +1420,7 @@ function vDur(st) {
 }
 function vReset(target) {
   V.objects = []; V.inst = defaultInstruments(); V.grid = "blanc";
+  V.bgImg = null; V.bgX = 0; V.bgY = 0; V.bgS = 1; V.bgAlpha = 0.65;
   for (let i = 0; i < target; i++) vApply(V.steps[i], i);
   V.idx = target; V.partial = null; V.ghost = null;
   const st = V.steps[V.idx];
@@ -1383,6 +1436,7 @@ function vStartStep() {
   vCaption.classList.toggle("hidden", !(st && st.msg));
   V.poseFrom = null; V.lastF = 0; V.objRef = null;
   if (st.t === "pose") V.poseFrom = Object.assign({}, V.inst[st.i]);
+  if (st.t === "bgpose") V.poseFrom = { x: V.bgX, y: V.bgY, s: V.bgS, a: V.bgAlpha };
   if (st.t === "moveObj") V.objRef = V.objects.find(o => o._step === st.ref) || null;
   if (st.t === "arc" || st.t === "circle") {
     const c = V.inst.compas;
@@ -1457,6 +1511,16 @@ function vAnimate(st, f) {
       V.partial = { instAlpha: st.i, frac: 1 - f };
       if (f >= 1) V.inst[st.i].visible = false;
       break;
+    case "bgimg":
+      loadStepImage(st, () => { V.bgImg = st._img; });
+      V.partial = { bgA: (st.a != null ? st.a : V.bgAlpha) * f };
+      break;
+    case "bgpose": {
+      const from = V.poseFrom || (V.poseFrom = { x: V.bgX, y: V.bgY, s: V.bgS, a: V.bgAlpha });
+      V.bgX = lerp(from.x, st.x, f); V.bgY = lerp(from.y, st.y, f); V.bgS = lerp(from.s, st.s, f);
+      if (st.a != null) V.bgAlpha = lerp(from.a, st.a, f);
+      break;
+    }
     default: break;
   }
 }
@@ -1464,6 +1528,14 @@ function vRender() {
   const w = vCanvas.clientWidth, h = vCanvas.clientHeight;
   if (!w || !h) return;
   drawGrid(vCtx, w, h, V.grid);
+  if (V.bgImg) {
+    const sc = Math.min(w / V.bgImg.width, h / V.bgImg.height) * V.bgS;
+    const iw = V.bgImg.width * sc, ih = V.bgImg.height * sc;
+    vCtx.save();
+    vCtx.globalAlpha = (V.partial && V.partial.bgA != null) ? V.partial.bgA : V.bgAlpha;
+    vCtx.drawImage(V.bgImg, (w - iw) / 2 + V.bgX, (h - ih) / 2 + V.bgY, iw, ih);
+    vCtx.restore();
+  }
   drawObjects(vCtx, V.objects);
   if (V.partial && V.partial.obj) drawObject(vCtx, V.partial.obj, V.partial.frac);
   for (const k of DRAW_ORDER) {
@@ -1488,7 +1560,7 @@ function vUI() {
   document.getElementById("vNextExo").disabled = !(hasS && V.sibIdx >= 0 && V.sibIdx < V.siblings.length - 1);
 }
 function vTick(now) {
-  if (!V.open) return;
+  if (!V.open) { V.raf = false; return; }
   if (V.playing && !V.paused) {
     const st = V.steps[V.idx];
     if (!st) vFinish();
@@ -1511,7 +1583,9 @@ function vTick(now) {
 }
 function openViewer(title, steps, siblings) {
   if (play.active) exitPlay();
-  V.open = true; V.steps = steps.slice(); V.speed = +document.getElementById("vSpeed").value || 1;
+  V.open = true; V.steps = steps.slice();
+  V.speed = +document.getElementById("vSpeed").value || 1;
+  play.speed = V.speed;                                    // garder le lecteur principal synchronisé
   V.siblings = siblings || null;
   V.sibIdx = siblings ? siblings.findIndex(s => s.name === title) : -1;
   V.playing = true; V.paused = false;
@@ -1524,7 +1598,7 @@ function openViewer(title, steps, siblings) {
   vCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   vSlider.max = V.steps.length;
   vReset(0); vStartStep(); vUI();
-  requestAnimationFrame(vTick);
+  if (!V.raf) { V.raf = true; requestAnimationFrame(vTick); }   // une seule boucle
 }
 function closeViewer() {
   V.open = false; V.playing = false;
@@ -1563,7 +1637,11 @@ vSlider.oninput = () => {
   vReset(+vSlider.value);
   V.paused = true; vUI(); vRender();
 };
-document.getElementById("vSpeed").onchange = e => { V.speed = +e.target.value; };
+document.getElementById("vSpeed").onchange = e => {
+  V.speed = +e.target.value;
+  play.speed = V.speed;                                    // vitesse partagée avec le lecteur principal
+  document.getElementById("speedSel").value = e.target.value;
+};
 const vNavExo = dir => () => {
   if (!V.siblings) return;
   const ni = V.sibIdx + dir;

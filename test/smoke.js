@@ -35,6 +35,14 @@ const sandbox = {
   prompt: () => "test", confirm: () => true, alert() {},
   URL: { createObjectURL: () => "blob:", revokeObjectURL() {} },
   Blob: function () {}, FileReader: function () {},
+  Image: function () {
+    const im = { onload: null, _src: "", width: 100, height: 100 };
+    Object.defineProperty(im, "src", {
+      set(v) { this._src = v; if (this.onload) this.onload(); },
+      get() { return this._src; },
+    });
+    return im;
+  },
   localStorage: { _d: {}, getItem(k) { return this._d[k] ?? null; }, setItem(k, v) { this._d[k] = v; }, removeItem(k) { delete this._d[k]; } },
   console,
 };
@@ -308,6 +316,37 @@ bundle += `
   if (bgX !== 50 || bgY !== 30) throw new Error("image non déplacée : bgX=" + bgX + " bgY=" + bgY);
   bgImg = null;
   console.log("[13] déplacement de l'image de fond OK");
+
+  // 14. Image dans le script : bgimg + bgpose rejoués au rebuild
+  S.script = [{ t: "paper", grid: "blanc" },
+              { t: "bgimg", src: "data:image/png;base64,x", a: 0.5 },
+              { t: "bgpose", x: 40, y: 20, s: 2, a: 0.4 }];
+  rebuild();
+  if (!bgImg) throw new Error("bgimg non chargée au rebuild");
+  if (bgX !== 40 || bgY !== 20 || bgS !== 2 || bgAlpha !== 0.4)
+    throw new Error("bgpose KO : " + JSON.stringify({ bgX, bgY, bgS, bgAlpha }));
+  animateStep({ t: "bgimg", src: "data:image/png;base64,x", a: 0.5 }, 0.5);   // pas d'exception
+  S.script = []; rebuild();
+  console.log("[14] image dans le script OK");
+
+  // 15. Vitesse de la visionneuse : ×4 doit accélérer, ×1 non ; les deux selects synchronisés
+  openViewer("test vitesse", [{ t: "paper" }, { t: "segment", x1: 0, y1: 0, x2: 100, y2: 0 }]);
+  const vSel = document.getElementById("vSpeed");
+  vSel.value = "4"; vSel.onchange({ target: vSel });
+  if (V.speed !== 4) throw new Error("V.speed KO : " + V.speed);
+  if (document.getElementById("speedSel").value !== "4") throw new Error("selects non synchronisés");
+  V.t0 = 0;
+  vTick(50);                                   // paper (1 ms) -> étape segment
+  if (V.idx !== 1) throw new Error("paper pas passé : idx=" + V.idx);
+  vTick(200);                                  // segment 750/4 = 187 ms -> fini
+  if (V.idx !== 2) throw new Error("lecture ×4 KO : idx=" + V.idx);
+  // à ×1, le segment (750 ms) ne doit PAS être fini après 200 ms
+  openViewer("test vitesse 1", [{ t: "paper" }, { t: "segment", x1: 0, y1: 0, x2: 100, y2: 0 }]);
+  V.speed = 1; V.t0 = 0;
+  vTick(50); vTick(200);
+  if (V.idx !== 1) throw new Error("lecture ×1 trop rapide : idx=" + V.idx);
+  closeViewer();
+  console.log("[15] vitesse visionneuse OK");
 
   console.log("TOUS LES TESTS PASSENT");
 })();
