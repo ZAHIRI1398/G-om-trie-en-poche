@@ -1,0 +1,10 @@
+name = "geometrie-biblio"
+main = "worker.js"
+compatibility_date = "2025-10-01"
+
+# Espace de stockage KV — créez-le avec :
+#   npx wrangler kv namespace create BIBLIO
+# puis collez l'« id » retourné ci-dessous.
+[[kv_namespaces]]
+binding = "BIBLIO"
+id = "e7b0ed83330f45e186a8f5feef8a5940"

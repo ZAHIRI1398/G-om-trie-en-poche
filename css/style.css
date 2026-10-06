@@ -194,6 +194,12 @@ html, body { height: 100%; font-family: "Segoe UI", Arial, sans-serif; font-size
 .bib-del:hover { color: #c00; }
 .bib-actions { margin-top: 6px; gap: 4px; }
 .bib-actions button { flex: 1; font-size: 11px; padding: 4px 2px; }
+#cloudBox { border-top: 1px dashed #d3dbe2; margin-top: 8px; padding-top: 4px; }
+#cloudBox input[type="text"] {
+  flex: 1; font-size: 11.5px; padding: 4px 6px;
+  border: 1px solid #d3dbe2; border-radius: 5px;
+}
+.cloud-auto { font-size: 11px; color: #5a6b7d; display: flex; gap: 5px; align-items: center; margin-top: 4px; }
 .help { font-size: 11.5px; color: #445; background: #fff; border: 1px solid #d3dbe2; border-radius: 6px; padding: 8px; }
 .help ul { margin: 6px 0 0 16px; }
 .help li { margin-bottom: 5px; }

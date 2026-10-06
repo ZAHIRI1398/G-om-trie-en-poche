@@ -1237,6 +1237,7 @@ function addToBiblio(name, steps, cat = "") {
   const arr = getBiblio().filter(e => !(e.name === name && (e.cat || "") === cat));   // dédoublonner
   arr.push({ name, steps, cat });
   setBiblio(arr); renderBiblio();
+  if (typeof cloudAutoSave === "function") cloudAutoSave();
 }
 const bibCollapsed = {};
 function renderBiblio() {
@@ -1261,6 +1262,7 @@ function renderBiblio() {
     del.onclick = e => {
       e.stopPropagation();
       const arr = getBiblio(); arr.splice(i, 1); setBiblio(arr); renderBiblio();
+      if (typeof cloudAutoSave === "function") cloudAutoSave();
     };
     return del;
   };
@@ -1378,6 +1380,64 @@ document.getElementById("bibFile").onchange = e => {
   };
   rd.readAsText(f);
 };
+
+/* ----- Synchronisation cloud (Cloudflare Worker) -----
+   Renseignez l'URL du worker après `npx wrangler deploy`
+   (voir cloudflare/README.md). */
+const CLOUD_API = "https://geometrie-biblio.adamyamine1398.workers.dev";
+const cloudCodeEl = document.getElementById("cloudCode");
+cloudCodeEl.value = localStorage.getItem("iep_cloud_code") || "";
+cloudCodeEl.onchange = () => localStorage.setItem("iep_cloud_code", cloudCodeEl.value.trim());
+
+function cloudReady() {
+  if (typeof fetch !== "function") return false;
+  if (!CLOUD_API) { scriptMsg.textContent = "Cloud non configuré : renseignez CLOUD_API dans js/app.js."; return false; }
+  if (!cloudCodeEl.value.trim()) { scriptMsg.textContent = "Entrez d'abord un code de classe."; return false; }
+  return true;
+}
+async function cloudSave(silent = false) {
+  if (!cloudReady()) return false;
+  try {
+    const r = await fetch(`${CLOUD_API}/api/biblio?code=${encodeURIComponent(cloudCodeEl.value.trim())}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: getBiblio() }),
+    });
+    if (!r.ok) throw 0;
+    if (!silent) {
+      scriptMsg.style.color = "#2a7";
+      scriptMsg.textContent = `Bibliothèque sauvegardée sur le cloud (${getBiblio().length} constructions).`;
+      setTimeout(() => { scriptMsg.textContent = ""; scriptMsg.style.color = "#a33"; }, 3000);
+    }
+    return true;
+  } catch {
+    scriptMsg.textContent = "Échec de la sauvegarde cloud (réseau ou worker).";
+    return false;
+  }
+}
+async function cloudLoad() {
+  if (!cloudReady()) return;
+  try {
+    const r = await fetch(`${CLOUD_API}/api/biblio?code=${encodeURIComponent(cloudCodeEl.value.trim())}`);
+    if (!r.ok) throw 0;
+    const data = await r.json();
+    const n = mergeBiblio(data.items || []);
+    scriptMsg.style.color = "#2a7";
+    scriptMsg.textContent = n ? `${n} construction(s) chargée(s) depuis le cloud.`
+                              : "Bibliothèque cloud vide ou déjà à jour.";
+    setTimeout(() => { scriptMsg.textContent = ""; scriptMsg.style.color = "#a33"; }, 3000);
+  } catch { scriptMsg.textContent = "Échec du chargement cloud (réseau ou worker)."; }
+}
+document.getElementById("cloudSaveBtn").onclick = () => cloudSave();
+document.getElementById("cloudLoadBtn").onclick = cloudLoad;
+
+/* synchro automatique (débounced) après chaque enregistrement/suppression */
+let cloudTimer = null;
+function cloudAutoSave() {
+  if (!document.getElementById("cloudAuto").checked || !CLOUD_API
+      || !cloudCodeEl.value.trim() || typeof fetch !== "function") return;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(() => cloudSave(true), 1500);
+}
 renderBiblio();
 
 /* ----- Page de chapitre : étiquettes des exercices ----- */
