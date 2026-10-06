@@ -111,6 +111,11 @@
     <div class="tb-title">Bibliothèque</div>
     <ul id="biblioList"></ul>
     <button type="button" id="saveBiblioBtn" title="Ajouter la construction courante à la bibliothèque (écrivez « Chapitre / Nom » pour regrouper)">Enregistrer dans la bibliothèque</button>
+    <div class="row bib-actions">
+      <button type="button" id="bibExportBtn" title="Sauvegarder toute la bibliothèque dans un fichier (.json)">💾 Exporter la bibliothèque</button>
+      <button type="button" id="bibImportBtn" title="Restaurer une bibliothèque exportée">📂 Importer la bibliothèque</button>
+      <input type="file" id="bibFile" accept=".json,application/json" class="hidden">
+    </div>
     <textarea id="scriptArea" spellcheck="false" placeholder="Le script JSON des actions enregistrées apparaît ici. Vous pouvez le modifier puis cliquer « Appliquer »."></textarea>
     <button type="button" id="applyScriptBtn" title="Reconstruire la figure depuis le script">Appliquer le script</button>
     <div id="scriptMsg"></div>

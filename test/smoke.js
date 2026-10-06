@@ -361,6 +361,19 @@ bundle += `
   closeViewer();
   console.log("[16] visionneuse + image OK");
 
+  // 17. Export/import de la bibliothèque : JSON {items} -> merge dédoublonné
+  localStorage._d = {};
+  addToBiblio("Exo A", [{ t: "paper" }], "Chap X");
+  addToBiblio("Exo B", [{ t: "paper" }], "Chap X");
+  const dump = JSON.stringify({ version: 1, items: getBiblio() });
+  localStorage._d = {};                                  // simule un autre navigateur
+  const nImp = mergeBiblio(JSON.parse(dump).items);
+  if (nImp !== 2 || getBiblio().length !== 2) throw new Error("import biblio KO : " + nImp);
+  if (getBiblio().some(e => e.cat !== "Chap X")) throw new Error("chapitres perdus à l'import");
+  if (mergeBiblio(JSON.parse(dump).items) !== 0) throw new Error("dédoublonnage KO");
+  if (mergeBiblio("pas un tableau") !== -1) throw new Error("fichier invalide accepté");
+  console.log("[17] export/import bibliothèque OK");
+
   console.log("TOUS LES TESTS PASSENT");
 })();
 `;

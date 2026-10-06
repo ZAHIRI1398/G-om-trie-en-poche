@@ -1333,6 +1333,51 @@ document.getElementById("saveBiblioBtn").onclick = () => {
     setTimeout(() => { scriptMsg.textContent = ""; scriptMsg.style.color = "#a33"; }, 3000);
   }
 };
+
+/* ----- export / import de la bibliothèque complète ----- */
+document.getElementById("bibExportBtn").onclick = () => {
+  const arr = getBiblio();
+  if (!arr.length) { scriptMsg.textContent = "Bibliothèque vide : rien à exporter."; return; }
+  const blob = new Blob([JSON.stringify({ version: 1, items: arr })],
+                        { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "bibliotheque-geometrie-en-poche.json";
+  a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById("bibImportBtn").onclick = () =>
+  document.getElementById("bibFile").click();
+/* fusionne des items importés dans la bibliothèque (dédoublonné par nom+chapitre) */
+function mergeBiblio(items) {
+  if (!Array.isArray(items)) return -1;
+  const arr = getBiblio();
+  let n = 0;
+  for (const it of items) {
+    if (!it || !it.name || !Array.isArray(it.steps)) continue;
+    const cat = it.cat || "";
+    if (!arr.some(e => e.name === it.name && (e.cat || "") === cat)) {
+      arr.push({ name: it.name, cat, steps: it.steps }); n++;
+    }
+  }
+  setBiblio(arr); renderBiblio();
+  return n;
+}
+document.getElementById("bibFile").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const data = JSON.parse(rd.result);
+      const n = mergeBiblio(Array.isArray(data) ? data : data.items);
+      if (n < 0) throw 0;
+      scriptMsg.style.color = "#2a7";
+      scriptMsg.textContent = n ? `${n} construction(s) importée(s) dans la bibliothèque.`
+                                : "Aucune nouvelle construction (déjà présentes).";
+    } catch { scriptMsg.textContent = "Fichier de bibliothèque invalide."; }
+    e.target.value = "";
+  };
+  rd.readAsText(f);
+};
 renderBiblio();
 
 /* ----- Page de chapitre : étiquettes des exercices ----- */
