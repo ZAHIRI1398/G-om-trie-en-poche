@@ -1223,8 +1223,8 @@ const BIBLIO_EXEMPLES = [
   ["Angle de 60° au compas", "angle60", "Triangles"],
   ["Médiatrice d'un segment (compas)", "mediatrice", "Médiatrices"],
   ["Cercle de diamètre [AB]", "cercleDiametre", "Cercles"],
-  ["Perpendiculaire à (d) hors (d) (compas)", "perpCompas", "Parallèles et perpendiculaires"],
-  ["Parallèle à (d) par un point (équerre)", "parallele", "Parallèles et perpendiculaires"],
+  ["Perpendiculaire à d hors de d (compas)", "perpCompas", "Parallèles et perpendiculaires"],
+  ["Parallèle à d par un point (équerre)", "parallele", "Parallèles et perpendiculaires"],
   ["Perpendiculaire à la règle-équerre", "perpendiculaire", "Parallèles et perpendiculaires"],
 ];
 const BIBLIO_KEY = "iep_biblio_v1";

@@ -124,7 +124,7 @@ const EXAMPLES = {
     ];
   },
 
-  /* Perpendiculaire à (d) passant par P hors de (d), au compas */
+  /* Perpendiculaire à d passant par P hors de d, au compas */
   perpCompas() {
     const d1 = { x: 240, y: 400 }, d2 = { x: 700, y: 400 };
     const P = { x: 470, y: 250 };
@@ -136,52 +136,52 @@ const EXAMPLES = {
     const aI = Math.atan2(I.y - P.y, I.x - P.x), aJ = Math.atan2(J.y - P.y, J.x - P.x);
     const aIK = Math.atan2(K.y - I.y, K.x - I.x), aJK = Math.atan2(K.y - J.y, K.x - J.x);
     return [
-      { t: "paper", grid: "carreaux", msg: "Tracer la perpendiculaire à (d) passant par P, au compas." },
+      { t: "paper", grid: "carreaux", msg: "Tracer la perpendiculaire à d passant par P, au compas." },
       { t: "show", i: "regle", msg: "On sort la règle." },
       { t: "pose", i: "regle", props: { x: 470, y: 420, angle: 0 }, msg: "On pose la règle." },
-      { t: "segment", x1: d1.x, y1: d1.y, x2: d2.x, y2: d2.y, msg: "On trace la droite (d)." },
+      { t: "segment", x1: d1.x, y1: d1.y, x2: d2.x, y2: d2.y, msg: "On trace la droite d." },
       { t: "hide", i: "regle", msg: "On range la règle." },
-      { t: "point", x: P.x, y: P.y, label: "P", msg: "On place le point P hors de (d)." },
-      { t: "text", x: d2.x + 10, y: d2.y + 4, str: "(d)", msg: "On nomme la droite (d)." },
+      { t: "point", x: P.x, y: P.y, label: "P", msg: "On place le point P hors de d." },
+      { t: "text", x: d2.x + 10, y: d2.y + 4, str: "d", msg: "On nomme la droite d." },
       { t: "show", i: "compas", msg: "On sort le compas." },
       { t: "pose", i: "compas", props: { x: P.x, y: P.y, r: r, tip: aI }, msg: "On pique le compas en P avec une ouverture assez grande." },
-      { t: "arc", cx: P.x, cy: P.y, r: r, a1: aJ - 0.15, a2: aI + 0.15, msg: "On trace un arc de centre P qui coupe (d) en deux points." },
+      { t: "arc", cx: P.x, cy: P.y, r: r, a1: aJ - 0.15, a2: aI + 0.15, msg: "On trace un arc de centre P qui coupe d en deux points." },
       { t: "croix", x: I.x, y: I.y, msg: "On marque la première intersection." },
       { t: "croix", x: J.x, y: J.y, msg: "On marque la deuxième intersection." },
       { t: "pose", i: "compas", props: { x: I.x, y: I.y, r: r2, tip: aIK }, msg: "On pique le compas sur la première intersection." },
-      { t: "arc", cx: I.x, cy: I.y, r: r2, a1: aIK - 0.3, a2: aIK + 0.3, msg: "On trace un arc sous (d)." },
+      { t: "arc", cx: I.x, cy: I.y, r: r2, a1: aIK - 0.3, a2: aIK + 0.3, msg: "On trace un arc sous d." },
       { t: "pose", i: "compas", props: { x: J.x, y: J.y, r: r2, tip: aJK }, msg: "Même ouverture, on pique sur la deuxième intersection." },
-      { t: "arc", cx: J.x, cy: J.y, r: r2, a1: aJK - 0.3, a2: aJK + 0.3, msg: "On trace un arc : il coupe le précédent sous (d)." },
+      { t: "arc", cx: J.x, cy: J.y, r: r2, a1: aJK - 0.3, a2: aJK + 0.3, msg: "On trace un arc : il coupe le précédent sous d." },
       { t: "croix", x: K.x, y: K.y, msg: "On marque cette nouvelle intersection." },
       { t: "hide", i: "compas", msg: "On range le compas." },
       { t: "show", i: "regle", msg: "On reprend la règle." },
       { t: "pose", i: "regle", props: { x: P.x + 20, y: (P.y + K.y) / 2, angle: -Math.PI / 2 }, msg: "On aligne la règle sur P et cette intersection." },
-      { t: "segment", x1: P.x, y1: P.y, x2: K.x, y2: K.y + 10, msg: "On trace la droite : elle est perpendiculaire à (d)." },
+      { t: "segment", x1: P.x, y1: P.y, x2: K.x, y2: K.y + 10, msg: "On trace la droite : elle est perpendiculaire à d." },
       { t: "hide", i: "regle", msg: "On range la règle." },
-      { t: "text", x: P.x + 20, y: P.y - 20, str: "Perpendiculaire à (d) par P", msg: "Terminé : la droite tracée passe par P et coupe (d) à angle droit." },
+      { t: "text", x: P.x + 20, y: P.y - 20, str: "Perpendiculaire à d par P", msg: "Terminé : la droite tracée passe par P et coupe d à angle droit." },
     ];
   },
 
-  /* Parallèle à (d) passant par M, à l'équerre */
+  /* Parallèle à d passant par M, à l'équerre */
   parallele() {
     const d1 = { x: 240, y: 430 }, d2 = { x: 700, y: 430 };
     const M = { x: 480, y: 300 };
     const px = 320;
     return [
-      { t: "paper", grid: "carreaux", msg: "Tracer la parallèle à (d) passant par M, à l'équerre." },
+      { t: "paper", grid: "carreaux", msg: "Tracer la parallèle à d passant par M, à l'équerre." },
       { t: "show", i: "regle", msg: "On sort la règle." },
       { t: "pose", i: "regle", props: { x: 470, y: 450, angle: 0 }, msg: "On pose la règle." },
-      { t: "segment", x1: d1.x, y1: d1.y, x2: d2.x, y2: d2.y, msg: "On trace la droite (d)." },
+      { t: "segment", x1: d1.x, y1: d1.y, x2: d2.x, y2: d2.y, msg: "On trace la droite d." },
       { t: "hide", i: "regle", msg: "On range la règle." },
-      { t: "text", x: d2.x + 10, y: d2.y + 4, str: "(d)", msg: "On nomme la droite (d)." },
-      { t: "point", x: M.x, y: M.y, label: "M", msg: "On place le point M hors de (d)." },
+      { t: "text", x: d2.x + 10, y: d2.y + 4, str: "d", msg: "On nomme la droite d." },
+      { t: "point", x: M.x, y: M.y, label: "M", msg: "On place le point M hors de d." },
       { t: "show", i: "equerre", msg: "On sort l'équerre." },
-      { t: "pose", i: "equerre", props: { x: px, y: d1.y, angle: -Math.PI / 2, flip: 1 }, msg: "On plaque un côté de l'angle droit de l'équerre sur (d)." },
-      { t: "segment", x1: px, y1: d1.y, x2: px, y2: d1.y - 190, msg: "On trace le long de l'autre côté : une perpendiculaire à (d)." },
+      { t: "pose", i: "equerre", props: { x: px, y: d1.y, angle: -Math.PI / 2, flip: 1 }, msg: "On plaque un côté de l'angle droit de l'équerre sur d." },
+      { t: "segment", x1: px, y1: d1.y, x2: px, y2: d1.y - 190, msg: "On trace le long de l'autre côté : une perpendiculaire à d." },
       { t: "pose", i: "equerre", props: { x: px, y: M.y, angle: -Math.PI / 2, flip: 1 }, msg: "On déplace l'équerre le long de cette perpendiculaire jusqu'au niveau de M." },
       { t: "segment", x1: px, y1: M.y, x2: px + 320, y2: M.y, msg: "On trace la perpendiculaire à la perpendiculaire, passant par M." },
       { t: "hide", i: "equerre", msg: "On range l'équerre." },
-      { t: "text", x: px + 335, y: M.y + 4, str: "(d') parallèle à (d) par M", msg: "Terminé : deux droites perpendiculaires à une même droite sont parallèles." },
+      { t: "text", x: px + 335, y: M.y + 4, str: "d' parallèle à d par M", msg: "Terminé : deux droites perpendiculaires à une même droite sont parallèles." },
     ];
   },
 
