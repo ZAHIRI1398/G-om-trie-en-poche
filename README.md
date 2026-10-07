@@ -33,6 +33,23 @@ python -m http.server 8765
 - **Export / import** de scripts (.json) et **exemples** de constructions
   (triangle équilatéral, médiatrice, angle de 60°, perpendiculaire).
 
+## Accès réservé aux enseignants (Cloudflare Pages)
+
+`functions/_middleware.js` bloque l'accès direct au site : seule une **URL
+signée** `?exp=…&sig=…` générée par classesnumeriques.app ouvre la session
+(cookie `mp_auth`, valable 2 h). Un élève qui tape l'adresse obtient une
+page « réservé aux enseignants ».
+
+Mise en place (une fois) :
+
+1. Choisir un secret long et aléatoire, ex. `python -c "import secrets; print(secrets.token_hex(32))"`
+2. **Cloudflare Pages** (projet du site) → *Settings → Environment variables* →
+   ajouter `MP_SECRET` = ce secret (Production et Preview).
+3. **Railway** (classesnumeriques.app) → variable `MATHS_EN_POCHE_SECRET` = le même secret.
+4. Pousser ce dépôt pour déployer le middleware.
+
+Si `MP_SECRET` n'est pas défini, le site répond 503 — vérifiez la variable.
+
 ## Structure
 
 ```
@@ -41,6 +58,8 @@ css/style.css   styles
 js/render.js    rendu : quadrillages, objets, instruments
 js/examples.js  scripts de constructions d'exemple
 js/app.js       interactions, enregistrement, lecteur d'animation
+functions/_middleware.js   accès par URL signée (Cloudflare Pages)
+cloudflare/     worker KV pour la bibliothèque cloud
 test/smoke.js   test de fumée Node (faux DOM) — `node test/smoke.js`
 ```
 
