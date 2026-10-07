@@ -1,8 +1,14 @@
 {
   // Worker du site statique www.mathsenpoche.site (Workers Builds, lié au dépôt Git).
   // main = garde d'accès enseignants ; assets = les fichiers du site.
+  // run_worker_first : true => TOUTES les requêtes passent par le worker
+  // avant de servir les assets (sinon un fichier existant est servi direct).
   "name": "g-om-trie-en-poche",
   "compatibility_date": "2025-10-01",
   "main": "site-worker.js",
-  "assets": { "directory": "./" }
+  "assets": {
+    "directory": "./",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
 }

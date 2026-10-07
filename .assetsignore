@@ -1,0 +1,12 @@
+.git
+.gitignore
+.assetsignore
+.wrangler
+node_modules
+cloudflare
+test
+wrangler.jsonc
+*.md
+*.bat
+nul
+test_out.txt
