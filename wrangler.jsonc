@@ -1,0 +1,8 @@
+{
+  // Worker du site statique www.mathsenpoche.site (Workers Builds, lié au dépôt Git).
+  // main = garde d'accès enseignants ; assets = les fichiers du site.
+  "name": "g-om-trie-en-poche",
+  "compatibility_date": "2025-10-01",
+  "main": "site-worker.js",
+  "assets": { "directory": "./" }
+}

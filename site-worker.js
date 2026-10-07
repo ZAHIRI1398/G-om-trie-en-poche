@@ -1,6 +1,7 @@
 /* ============================================================
-   Middleware Cloudflare Pages — Maths en Poche
-   Accès réservé aux enseignants de classesnumeriques.app.
+   Worker du site www.mathsenpoche.site
+   Sert les fichiers statiques (env.ASSETS) uniquement aux
+   enseignants de classesnumeriques.app.
 
    Entrée : URL signée par le serveur Flask
        https://www.mathsenpoche.site/?exp=<ts>&sig=<hmac>
@@ -11,8 +12,8 @@
    aussi admises via l'en-tête Referer du même site — utile dans les
    navigateurs qui bloquent les cookies tiers en iframe (Safari).
 
-   ⚙️  À configurer : variable d'environnement MP_SECRET dans
-       Cloudflare Pages > Settings > Environment variables
+   ⚙️  MP_SECRET se règle dans Cloudflare > Workers >
+       g-om-trie-en-poche > Settings > Variables and Secrets
        (la même valeur que MATHS_EN_POCHE_SECRET côté Flask).
    ============================================================ */
 
@@ -37,7 +38,7 @@ async function validAuth(secret, exp, sig) {
   return d === 0;
 }
 
-function denied(url) {
+function denied() {
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Accès réservé — Maths en Poche</title>
@@ -60,45 +61,48 @@ a{color:#ffd76a}
   });
 }
 
-export async function onRequest(context) {
-  const { request, env, next } = context;
-  const url = new URL(request.url);
-  const secret = env.MP_SECRET;
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const secret = env.MP_SECRET;
 
-  // Secret non configuré : on refuse tout (page explicite pour l'admin)
-  if (!secret) {
-    return new Response(
-      "Maths en Poche : MP_SECRET n'est pas configuré dans Cloudflare Pages " +
-      "(Settings > Environment variables).", { status: 503 });
-  }
+    // Secret non configuré : on refuse tout (message explicite pour l'admin)
+    if (!secret) {
+      return new Response(
+        "Maths en Poche : MP_SECRET n'est pas configuré " +
+        "(Worker g-om-trie-en-poche > Settings > Variables and Secrets).",
+        { status: 503 });
+    }
 
-  // 1) Porte d'entrée : URL signée ?exp=…&sig=…
-  const exp = url.searchParams.get("exp");
-  const sig = url.searchParams.get("sig");
-  if (exp || sig) {
-    if (!(await validAuth(secret, exp, sig))) return denied(url);
-    const resp = await next();
-    const res = new Response(resp.body, resp);
-    const maxAge = Math.max(60, Number(exp) - Math.floor(Date.now() / 1000));
-    // SameSite=None + Secure : cookie utilisable dans l'iframe cross-site
-    res.headers.append("Set-Cookie",
-      `${COOKIE}=${exp}.${sig}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=None`);
-    res.headers.set("Cache-Control", "no-store");
-    return res;
-  }
+    // 1) Porte d'entrée : URL signée ?exp=…&sig=…
+    const exp = url.searchParams.get("exp");
+    const sig = url.searchParams.get("sig");
+    if (exp || sig) {
+      if (!(await validAuth(secret, exp, sig))) return denied();
+      const resp = await env.ASSETS.fetch(request);
+      const res = new Response(resp.body, resp);
+      const maxAge = Math.max(60, Number(exp) - Math.floor(Date.now() / 1000));
+      // SameSite=None + Secure : cookie utilisable dans l'iframe cross-site
+      res.headers.append("Set-Cookie",
+        `${COOKIE}=${exp}.${sig}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=None`);
+      res.headers.set("Cache-Control", "no-store");
+      return res;
+    }
 
-  // 2) Session déjà authentifiée par cookie
-  const m = (request.headers.get("Cookie") || "").match(/(?:^|;\s*)mp_auth=([^;]+)/);
-  if (m) {
-    const [e, s] = m[1].split(".");
-    if (await validAuth(secret, e, s)) return next();
-  }
+    // 2) Session déjà authentifiée par cookie
+    const m = (request.headers.get("Cookie") || "").match(/(?:^|;\s*)mp_auth=([^;]+)/);
+    if (m) {
+      const [e, s] = m[1].split(".");
+      if (await validAuth(secret, e, s)) return env.ASSETS.fetch(request);
+    }
 
-  // 3) Sous-ressources appelées par la page autorisée (Referer même site).
-  //    Jamais pour les documents HTML : il faut l'URL signée ou le cookie.
-  const ref = request.headers.get("Referer") || "";
-  if (ASSET.test(url.pathname) && ref.startsWith(url.origin + "/")) return next();
+    // 3) Sous-ressources appelées par la page autorisée (Referer même site).
+    //    Jamais pour les documents HTML : il faut l'URL signée ou le cookie.
+    const ref = request.headers.get("Referer") || "";
+    if (ASSET.test(url.pathname) && ref.startsWith(url.origin + "/"))
+      return env.ASSETS.fetch(request);
 
-  // 4) Sinon : refusé
-  return denied(url);
-}
+    // 4) Sinon : refusé
+    return denied();
+  },
+};

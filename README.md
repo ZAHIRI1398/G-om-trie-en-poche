@@ -33,20 +33,23 @@ python -m http.server 8765
 - **Export / import** de scripts (.json) et **exemples** de constructions
   (triangle équilatéral, médiatrice, angle de 60°, perpendiculaire).
 
-## Accès réservé aux enseignants (Cloudflare Pages)
+## Accès réservé aux enseignants (Worker Cloudflare)
 
-`functions/_middleware.js` bloque l'accès direct au site : seule une **URL
-signée** `?exp=…&sig=…` générée par classesnumeriques.app ouvre la session
-(cookie `mp_auth`, valable 2 h). Un élève qui tape l'adresse obtient une
+Le site est servi par le **Worker** `g-om-trie-en-poche` (Workers Builds,
+lié au dépôt Git — pas Cloudflare Pages). `site-worker.js` est le point
+d'entrée déclaré dans `wrangler.jsonc` : il bloque l'accès direct et ne
+sert les fichiers (`env.ASSETS`) qu'avec une **URL signée**
+`?exp=…&sig=…` générée par classesnumeriques.app, ou le cookie `mp_auth`
+qu'elle installe (valable 2 h). Un élève qui tape l'adresse obtient une
 page « réservé aux enseignants ».
 
 Mise en place (une fois) :
 
 1. Choisir un secret long et aléatoire, ex. `python -c "import secrets; print(secrets.token_hex(32))"`
-2. **Cloudflare Pages** (projet du site) → *Settings → Environment variables* →
-   ajouter `MP_SECRET` = ce secret (Production et Preview).
+2. **Cloudflare Workers** → `g-om-trie-en-poche` → *Settings → Variables and Secrets* →
+   ajouter `MP_SECRET` = ce secret (Production).
 3. **Railway** (classesnumeriques.app) → variable `MATHS_EN_POCHE_SECRET` = le même secret.
-4. Pousser ce dépôt pour déployer le middleware.
+4. Pousser ce dépôt pour déployer le worker.
 
 Si `MP_SECRET` n'est pas défini, le site répond 503 — vérifiez la variable.
 
@@ -58,7 +61,8 @@ css/style.css   styles
 js/render.js    rendu : quadrillages, objets, instruments
 js/examples.js  scripts de constructions d'exemple
 js/app.js       interactions, enregistrement, lecteur d'animation
-functions/_middleware.js   accès par URL signée (Cloudflare Pages)
+site-worker.js  worker du site : accès par URL signée (enseignants)
+wrangler.jsonc  config du worker (assets statiques + script)
 cloudflare/     worker KV pour la bibliothèque cloud
 test/smoke.js   test de fumée Node (faux DOM) — `node test/smoke.js`
 ```
