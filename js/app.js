@@ -941,6 +941,27 @@ document.getElementById("commentBtn").onclick = () => {
   syncScriptUI();
 };
 
+/* Couleur / taille du bandeau d'explications (mémorisées dans le navigateur) */
+function applyMsgStyle() {
+  const c = document.getElementById("msgColor").value;
+  const fs = document.getElementById("msgSize").value;
+  for (const id of ["stepCaption", "vCaption"]) {
+    const el = document.getElementById(id);
+    el.style.color = c; el.style.fontSize = fs + "px";
+  }
+  try { localStorage.setItem("iep_msg_style", JSON.stringify({ c, fs })); } catch {}
+}
+try {
+  const s = JSON.parse(localStorage.getItem("iep_msg_style") || "null");
+  if (s) {
+    document.getElementById("msgColor").value = s.c;
+    document.getElementById("msgSize").value = s.fs;
+  }
+} catch {}
+document.getElementById("msgColor").oninput = applyMsgStyle;
+document.getElementById("msgSize").onchange = applyMsgStyle;
+applyMsgStyle();
+
 /* ============================================================
    LECTEUR D'ANIMATION
    ============================================================ */
