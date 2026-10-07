@@ -25,6 +25,9 @@ python -m http.server 8765
 - **Points nommés** (A, B, C…), textes, gomme, aimantation du quadrillage.
 - **Feuilles** : blanc, carreaux 5 mm, Seyès, papier millimétré, repère.
 - **Enregistrement automatique** de toutes les actions dans un script JSON.
+- **Explications par étape** : case « Expliquer chaque action » (commentaire
+  demandé après chaque étape) ou bouton « Commenter » (dernière étape) —
+  chaque étape peut porter un champ `msg` affiché en bas pendant la lecture.
 - **Lecteur d'animation** : la construction se rejoue comme un film —
   play, pause, pas à pas, vitesse, boucle, curseur de progression.
 - **Export / import** de scripts (.json) et **exemples** de constructions

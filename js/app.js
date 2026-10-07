@@ -130,6 +130,10 @@ function serialProps(p) {
   return o;
 }
 function record(step) {
+  if (!play.active && document.getElementById("autoMsgChk").checked) {
+    const m = prompt("Explication de cette étape (affichée en bas à la lecture) :", step.msg || "");
+    if (m) step.msg = m; else delete step.msg;    // vide ou Annuler : pas d'explication
+  }
   S.script.push(step);
   syncScriptUI();
 }
@@ -925,6 +929,16 @@ document.getElementById("clearBtn").onclick = () => {
   if (play.active || !S.script.length && !S.objects.length) return;
   if (!confirm("Effacer toute la construction ?")) return;
   S.script = []; rebuild(); syncScriptUI();
+};
+
+/* Explication de la dernière étape enregistrée (champ msg, affiché en bas à la lecture) */
+document.getElementById("commentBtn").onclick = () => {
+  if (play.active || !S.script.length) return;
+  const st = S.script[S.script.length - 1];
+  const m = prompt(`Explication de l'étape ${S.script.length} (${st.t}) — laisser vide pour la retirer :`, st.msg || "");
+  if (m === null) return;
+  if (m) st.msg = m; else delete st.msg;
+  syncScriptUI();
 };
 
 /* ============================================================
