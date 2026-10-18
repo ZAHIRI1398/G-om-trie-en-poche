@@ -56,10 +56,26 @@ html, body { height: 100%; font-family: "Segoe UI", Arial, sans-serif; font-size
   pointer-events: none; font-weight: 600; line-height: 1.4; letter-spacing: .02em;
 }
 .hidden { display: none !important; }
-#textInput {
-  position: absolute; z-index: 5; font-family: Georgia, serif;
-  padding: 1px 4px; border: 1px dashed #888; border-radius: 3px;
-  background: rgba(255,255,255,.9); outline: none;
+#textPanel {
+  position: absolute; z-index: 6; background: #fff;
+  border: 1px solid #b9c4d2; border-radius: 7px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.2); padding: 4px;
+}
+#textToolbar { display: flex; gap: 2px; flex-wrap: wrap; margin-bottom: 3px; }
+#textToolbar button {
+  min-width: 26px; height: 22px; padding: 0 6px; font-size: 13px;
+  font-family: Georgia, serif; line-height: 1;
+  border: 1px solid #d0d7e0; border-radius: 4px;
+  background: #f4f7fb; cursor: pointer;
+}
+#textToolbar button:hover { background: #e3ecf7; border-color: #9fb4cc; }
+.tt-sep { width: 1px; background: #dde3ea; margin: 0 3px; }
+.tt-hint { font-size: 10px; color: #7a8797; align-self: center; margin-left: 2px; white-space: nowrap; }
+#textPanel #textInput {
+  position: static; display: block; width: 320px;
+  font-family: Georgia, serif;
+  padding: 2px 5px; border: 1px dashed #888; border-radius: 3px;
+  background: rgba(255,255,255,.95); outline: none;
 }
 #inkColor, #fillColor { width: 42px; height: 24px; padding: 0; border: 1px solid #55677f; border-radius: 4px; background: #3c4b60; cursor: pointer; }
 #textSizeSel { width: 48px; padding: 2px; border-radius: 4px; background: #3c4b60; color: #e8edf2; border: 1px solid #55677f; }

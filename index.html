@@ -90,7 +90,29 @@
       <canvas id="paper"></canvas>
       <div id="playOverlay" class="hidden">Mode lecture — construction en cours…</div>
       <div id="stepCaption" class="hidden"></div>
-      <input id="textInput" class="hidden" type="text" placeholder="Texte…" autocomplete="off">
+      <div id="textPanel" class="hidden">
+        <div id="textToolbar" role="toolbar" aria-label="Mise en forme mathématique">
+          <button type="button" data-tt="\frac{}{}" title="Fraction — \frac{num}{den}"><sup>a</sup>⁄<sub>b</sub></button>
+          <button type="button" data-tt="\sqrt{}" title="Racine carrée — \sqrt{x}">√x</button>
+          <button type="button" data-tt="^{}" title="Exposant — x^{2}">x²</button>
+          <button type="button" data-tt="_{}" title="Indice — a_{1}">xᵢ</button>
+          <button type="button" data-tt="\boxed{}" title="Encadrer le résultat">▭x</button>
+          <span class="tt-sep"></span>
+          <button type="button" data-tt="×" title="Multiplier">×</button>
+          <button type="button" data-tt="÷" title="Diviser">÷</button>
+          <button type="button" data-tt="π" title="Pi">π</button>
+          <button type="button" data-tt="°" title="Degré">°</button>
+          <button type="button" data-tt="≤" title="Inférieur ou égal">≤</button>
+          <button type="button" data-tt="≥" title="Supérieur ou égal">≥</button>
+          <button type="button" data-tt="≈" title="Environ égal">≈</button>
+          <button type="button" data-tt="±" title="Plus ou moins">±</button>
+          <button type="button" data-tt="∠" title="Angle">∠</button>
+          <button type="button" data-tt="→" title="Flèche">→</button>
+          <span class="tt-sep"></span>
+          <span class="tt-hint">Σ LaTeX accepté : \frac{1}{4}, \sqrt{2}, x^{2}, a_{1}…</span>
+        </div>
+        <input id="textInput" type="text" placeholder="Texte… ex : aire = \frac{1}{2} × b × h" autocomplete="off">
+      </div>
     </div>
 
     <!-- ===== Lecteur (bas) ===== -->

@@ -378,7 +378,7 @@ function hitText(wx, wy) {
   for (let i = S.objects.length - 1; i >= 0; i--) {
     const o = S.objects[i];
     if (o.type !== "text") continue;
-    const fs = o.fs || 15, w = (o.str ? o.str.length : 1) * fs * 0.6;
+    const fs = o.fs || 15, w = o._w || (o.str ? o.str.length : 1) * fs * 0.6;
     if (wx > o.x - 12 && wx < o.x + w + 12 && wy > o.y - fs * 1.5 && wy < o.y + fs * 0.7) return o;
   }
   return null;
@@ -394,7 +394,7 @@ function hitObject(wx, wy) {
       if (Math.abs((wx - o.x1) * dy - (wy - o.y1) * dx) / L < 7) return i;
     }
     if ((o.type === "point" || o.type === "croix") && dist(wx, wy, o.x, o.y) < 10) return i;
-    if (o.type === "text" && wx > o.x - 6 && wx < o.x + o.str.length * (o.fs || 15) * 0.6 + 6 &&
+    if (o.type === "text" && wx > o.x - 6 && wx < o.x + (o._w || o.str.length * (o.fs || 15) * 0.6) + 6 &&
         wy > o.y - (o.fs || 15) * 1.1 && wy < o.y + (o.fs || 15) * 0.4) return i;
     if (o.type === "cadre" && wx > o.x - 5 && wx < o.x + o.w + 5 && wy > o.y - 5 && wy < o.y + o.h + 5) return i;
     if (o.type === "stroke" && o.pts.some(pt => dist(wx, wy, pt[0], pt[1]) < 6)) return i;
@@ -825,22 +825,23 @@ document.getElementById("fillColor").oninput = e => { S.fill = e.target.value; }
 document.getElementById("textSizeSel").onchange = e => { S.textSize = +e.target.value; };
 
 /* ----- saisie de texte directement sur la feuille ----- */
+const textPanel = document.getElementById("textPanel");
 const textInput = document.getElementById("textInput");
 function openTextInput(x, y, obj = null) {
   const fs = obj ? (obj.fs || 15) : S.textSize;
   textInput.value = obj ? obj.str : "";
-  textInput.style.left = x + "px";
-  textInput.style.top = (y - fs) + "px";
+  textPanel.style.left = x + "px";
+  textPanel.style.top = (y - fs - 34) + "px";   // 34px : hauteur de la barre d'outils
   textInput.style.fontSize = fs + "px";
   textInput.style.color = obj ? (obj.c || S.ink) : S.ink;
-  textInput.classList.remove("hidden");
+  textPanel.classList.remove("hidden");
   textInput._pos = { x, y };
   textInput._edit = obj;
   setTimeout(() => { textInput.focus(); textInput.select(); }, 0);
 }
 function commitTextInput() {
   const str = textInput.value.trim();
-  textInput.classList.add("hidden");
+  textPanel.classList.add("hidden");
   if (textInput._edit) {
     const o = textInput._edit;
     if (str && str !== o.str) {
@@ -860,6 +861,26 @@ textInput.addEventListener("keydown", e => {
   else if (e.key === "Escape") { textInput.value = ""; commitTextInput(); }
 });
 textInput.addEventListener("blur", commitTextInput);
+
+/* Mini-éditeur : boutons de la barre d'outils -> insèrent un jeton
+   (\frac{}{}, \sqrt{}, ^{}, ×, π…) à la position du curseur. */
+function textInsert(snippet) {
+  if (textPanel.classList.contains("hidden")) return;
+  const s = textInput.selectionStart == null ? textInput.value.length : textInput.selectionStart;
+  const e = textInput.selectionEnd == null ? s : textInput.selectionEnd;
+  textInput.value = textInput.value.slice(0, s) + snippet + textInput.value.slice(e);
+  // si le jeton contient "{}" vide, placer le curseur dedans (ex. \frac{}{})
+  const hole = snippet.indexOf("{}");
+  const pos = hole >= 0 ? s + hole + 1 : s + snippet.length;
+  textInput.focus();
+  textInput.setSelectionRange(pos, pos);
+}
+// preventDefault sur mousedown : éviter que le clic sur un bouton
+// fasse perdre le focus à l'input (qui validerait et fermerait le panneau)
+document.getElementById("textToolbar").addEventListener("mousedown", e => e.preventDefault());
+document.querySelectorAll("#textToolbar [data-tt]").forEach(b => {
+  b.addEventListener("click", () => textInsert(b.dataset.tt));
+});
 
 /* ----- image d'exercice en fond ----- */
 const imgFile = document.getElementById("imgFile");

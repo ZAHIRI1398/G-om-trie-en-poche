@@ -109,6 +109,157 @@ function hexToRgba(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
+/* ----- Texte enrichi : mini-markup de type LaTeX dessiné sur le canvas -----
+   \frac{n}{d}   fraction empilée (numérateur, barre, dénominateur)
+   \sqrt{x}      racine carrée (surd)
+   ^{..} ou ^x   exposant          _{..} ou _x  indice
+   \boxed{x}     encadré
+   \( \) \[ \] $$ et \left \right : délimiteurs ignorés
+   commandes symboles usuelles (\times \div \pi \pm \le \ge \approx \ne \cdot °…)
+*/
+var RT_SYMBOLS = {
+  times: "×", div: "÷", cdot: "·", pm: "±", mp: "∓", approx: "≈", neq: "≠",
+  ne: "≠", le: "≤", leq: "≤", ge: "≥", geq: "≥", lt: "<", gt: ">",
+  infty: "∞", degree: "°", circ: "°", prime: "′", angle: "∠",
+  pi: "π", alpha: "α", beta: "β", gamma: "γ", delta: "δ", theta: "θ",
+  lambda: "λ", mu: "μ", rho: "ρ", sigma: "σ", phi: "φ", omega: "ω",
+  Delta: "Δ", Omega: "Ω", Sigma: "Σ", Pi: "Π", perp: "⊥", parallel: "∥",
+  cong: "≅", sim: "∼", in: "∈", subset: "⊂", rightarrow: "→",
+  leftarrow: "←", to: "→", mid: "|", propto: "∝", emptyset: "∅"
+};
+
+// Lit un groupe {…} en suivant l'imbrication des accolades.
+// s[i] doit être '{' ; retourne { inner, end } ou null.
+function rtReadBrace(s, i) {
+  if (s[i] !== "{") return null;
+  var depth = 0;
+  for (var j = i; j < s.length; j++) {
+    if (s[j] === "{") depth++;
+    else if (s[j] === "}" && --depth === 0) return { inner: s.slice(i + 1, j), end: j + 1 };
+  }
+  return { inner: s.slice(i + 1), end: s.length };
+}
+
+// Découpe la chaîne en jetons {k:'t'|'frac'|'sqrt'|'box'|'sup'|'sub', v/n/d}
+function rtTokens(s) {
+  var toks = [], buf = "", i = 0;
+  function flush() { if (buf) { toks.push({ k: "t", v: buf }); buf = ""; } }
+  function braceAfter(keyword) {          // lit {…} juste après \keyword
+    var j = i + keyword.length;
+    var g = rtReadBrace(s, j);
+    if (g) { i = g.end; return g.inner; }
+    return null;
+  }
+  while (i < s.length) {
+    if (s.slice(i, i + 5) === "\\frac" || s.slice(i, i + 6) === "\\dfrac") {
+      var n = braceAfter(s.slice(i, i + 6) === "\\dfrac" ? "\\dfrac" : "\\frac");
+      var d = n !== null ? braceAfter("") : null;   // i pointe déjà après n
+      // astuce : braceAfter("") doit lire depuis la position courante
+      if (n !== null && d !== null) { flush(); toks.push({ k: "frac", n: n, d: d }); continue; }
+      buf += "\\frac"; i += 5; continue;
+    }
+    if (s.slice(i, i + 5) === "\\sqrt") {
+      var v = braceAfter("\\sqrt");
+      if (v !== null) { flush(); toks.push({ k: "sqrt", v: v }); continue; }
+      buf += "\\sqrt"; i += 5; continue;
+    }
+    if (s.slice(i, i + 6) === "\\boxed") {
+      var b = braceAfter("\\boxed");
+      if (b !== null) { flush(); toks.push({ k: "box", v: b }); continue; }
+      buf += "\\boxed"; i += 6; continue;
+    }
+    if (s[i] === "^" || s[i] === "_") {
+      var kind = s[i] === "^" ? "sup" : "sub";
+      var g2 = rtReadBrace(s, i + 1);
+      flush();
+      if (g2) { toks.push({ k: kind, v: g2.inner }); i = g2.end; }
+      else { toks.push({ k: kind, v: s[i + 1] || "" }); i += 2; }
+      continue;
+    }
+    if (s[i] === "\\") {
+      var m = /^\\([a-zA-Z]+)/.exec(s.slice(i));
+      if (m) {
+        var name = m[1];
+        if (name === "left" || name === "right") { i += m[0].length; continue; } // délimiteur
+        if (RT_SYMBOLS[name] !== undefined) { flush(); toks.push({ k: "t", v: RT_SYMBOLS[name] }); }
+        i += m[0].length; continue;                       // commande inconnue : on la masque
+      }
+      // \( \) \[ \]  : délimiteurs -> ignorés ; \; \, \! : espace fine
+      if (/^\\[()\[\]{}|]/.test(s.slice(i))) {
+        var c = s[i + 1];
+        if (c === "|" || c === "{" || c === "}") { flush(); toks.push({ k: "t", v: c }); }
+        i += 2; continue;
+      }
+      if (/^\\[,;!\s]/.test(s.slice(i))) { flush(); toks.push({ k: "t", v: " " }); i += 2; continue; }
+      buf += "\\"; i++; continue;
+    }
+    if (s.slice(i, i + 2) === "$$") { i += 2; continue; }
+    buf += s[i]; i++;
+  }
+  flush();
+  return toks;
+}
+
+// Dessine ou mesure la suite de jetons à la baseline (x,y), taille fs.
+// Retourne la largeur occupée. draw=false : mesure seule.
+function rtExec(ctx, s, x, y, fs, draw) {
+  var toks = rtTokens(s), cx = x;
+  for (var i = 0; i < toks.length; i++) {
+    var t = toks[i];
+    if (t.k === "t") {
+      ctx.font = fs + "px Georgia";
+      if (draw) ctx.fillText(t.v, cx, y);
+      cx += ctx.measureText(t.v).width;
+    } else if (t.k === "frac") {
+      var sub = fs * 0.78;
+      var wn = rtExec(ctx, t.n, 0, 0, sub, false);
+      var wd = rtExec(ctx, t.d, 0, 0, sub, false);
+      var w = Math.max(wn, wd) + fs * 0.4;
+      var barY = y - fs * 0.34;
+      if (draw) {
+        ctx.lineWidth = Math.max(1.2, fs * 0.07);
+        ctx.beginPath(); ctx.moveTo(cx, barY); ctx.lineTo(cx + w, barY); ctx.stroke();
+        rtExec(ctx, t.n, cx + (w - wn) / 2, barY - fs * 0.16, sub, true);
+        rtExec(ctx, t.d, cx + (w - wd) / 2, barY + fs * 0.16 + sub * 1.05, sub, true);
+      }
+      cx += w;
+    } else if (t.k === "sup" || t.k === "sub") {
+      var fsub = fs * 0.72;
+      var dy = t.k === "sup" ? -fs * 0.45 : fs * 0.3;
+      cx += rtExec(ctx, t.v, cx, y + dy, fsub, draw);
+    } else if (t.k === "sqrt") {
+      var sub2 = fs * 0.9;
+      var wi = rtExec(ctx, t.v, 0, 0, sub2, false);
+      var hook = fs * 0.5;
+      ctx.font = fs + "px Georgia";
+      if (draw) {
+        ctx.fillText("√", cx, y);
+        var topY = y - fs * 0.95;
+        ctx.lineWidth = Math.max(1.1, fs * 0.05);
+        ctx.beginPath(); ctx.moveTo(cx + hook - 3, topY); ctx.lineTo(cx + hook + wi + 3, topY); ctx.stroke();
+        rtExec(ctx, t.v, cx + hook, y, sub2, true);
+      }
+      cx += hook + wi + 4;
+    } else if (t.k === "box") {
+      var wi2 = rtExec(ctx, t.v, cx + fs * 0.15, y, fs, draw);
+      var wb = wi2 + fs * 0.3;
+      if (draw) { ctx.lineWidth = Math.max(1.1, fs * 0.06); ctx.strokeRect(cx, y - fs * 0.95, wb, fs * 1.35); }
+      cx += wb;
+    }
+  }
+  return cx - x;
+}
+
+// Point d'entrée : dessine le texte enrichi, retourne sa largeur.
+function drawRichText(ctx, str, x, y, fs) {
+  ctx.textAlign = "left";
+  return rtExec(ctx, str, x, y, fs, true);
+}
+// Mesure sans dessiner.
+function measureRichText(ctx, str, fs) {
+  return rtExec(ctx, str, 0, 0, fs, false);
+}
+
 function drawObjects(ctx, objects) {
   ctx.save();
   ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -173,8 +324,7 @@ function drawObject(ctx, o, frac = 1) {
     }
     case "text": {
       ctx.globalAlpha = frac;
-      ctx.font = (o.fs || 15) + "px Georgia"; ctx.textAlign = "left";
-      ctx.fillText(o.str, o.x, o.y);
+      o._w = drawRichText(ctx, o.str, o.x, o.y, o.fs || 15);   // _w : largeur réelle pour le hit-test
       ctx.globalAlpha = 1;
       break;
     }
