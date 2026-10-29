@@ -203,4 +203,136 @@ const EXAMPLES = {
       { t: "text", x: M.x + 15, y: M.y - 150, str: "Perpendiculaire en M", msg: "Terminé : l'équerre garantit l'angle droit." },
     ];
   },
+
+  /* Hexagone régulier inscrit dans un cercle :
+     le côté de l'hexagone est égal au rayon du cercle. */
+  hexagone() {
+    const O = { x: 450, y: 300 }, R = 170;
+    const V = a => ({ x: O.x + R * Math.cos(a), y: O.y - R * Math.sin(a) });
+    const pts = [0, 60, 120, 180, 240, 300].map(d => V(d * Math.PI / 180));
+    const L = "ABCDEF";
+    const steps = [
+      { t: "paper", grid: "carreaux", msg: "Tracer un hexagone régulier ABCDEF inscrit dans un cercle." },
+      { t: "point", x: O.x, y: O.y, label: "O", msg: "On place le centre O." },
+      { t: "show", i: "compas", msg: "On sort le compas." },
+      { t: "pose", i: "compas", props: { x: O.x, y: O.y, r: R, tip: 0 }, msg: "On pique en O et on ouvre le compas sur un rayon quelconque." },
+      { t: "circle", cx: O.x, cy: O.y, r: R, msg: "On trace le cercle de centre O." },
+      { t: "point", x: pts[0].x, y: pts[0].y, label: "A", msg: "On marque un premier sommet A sur le cercle." },
+    ];
+    for (let i = 1; i < 6; i++) {
+      const a = Math.atan2(pts[i].y - pts[i - 1].y, pts[i].x - pts[i - 1].x);
+      steps.push(
+        { t: "pose", i: "compas", props: { x: pts[i - 1].x, y: pts[i - 1].y, r: R, tip: a }, msg: `Sans changer l'ouverture, on pique le compas en ${L[i - 1]}.` },
+        { t: "arc", cx: pts[i - 1].x, cy: pts[i - 1].y, r: R, a1: a - 0.3, a2: a + 0.3, msg: "On reporte le rayon sur le cercle." },
+        { t: "croix", x: pts[i].x, y: pts[i].y, msg: `On marque l'intersection : sommet ${L[i]}.` },
+        { t: "point", x: pts[i].x, y: pts[i].y, label: L[i], msg: `Le point ${L[i]} est le ${i + 1}e sommet.` },
+      );
+    }
+    steps.push(
+      { t: "hide", i: "compas", msg: "On range le compas." },
+      { t: "show", i: "regle", msg: "On prend la règle." },
+    );
+    for (let i = 0; i < 6; i++) {
+      const p = pts[i], q = pts[(i + 1) % 6];
+      const a = Math.atan2(q.y - p.y, q.x - p.x);
+      steps.push(
+        { t: "pose", i: "regle", props: { x: (p.x + q.x) / 2 - 14 * Math.sin(a), y: (p.y + q.y) / 2 + 14 * Math.cos(a), angle: a }, msg: `On aligne la règle sur ${L[i]} et ${L[(i + 1) % 6]}.` },
+        { t: "segment", x1: p.x, y1: p.y, x2: q.x, y2: q.y, msg: `On trace le côté [${L[i]}${L[(i + 1) % 6]}].` },
+      );
+    }
+    steps.push(
+      { t: "hide", i: "regle", msg: "On range la règle." },
+      { t: "text", x: 370, y: 160, str: "Hexagone régulier ABCDEF", msg: "Terminé : 6 côtés égaux au rayon. C'est le secret de la construction !" },
+    );
+    return steps;
+  },
+
+  /* Pentagone régulier inscrit dans un cercle :
+     construction classique (médiatrice + milieu + report QN). */
+  pentagone() {
+    const O = { x: 450, y: 300 }, R = 170;
+    const V = a => ({ x: O.x + R * Math.cos(a), y: O.y - R * Math.sin(a) });
+    const A = V(0), B = V(Math.PI), Q = V(Math.PI / 2);
+    const M = { x: (O.x + B.x) / 2, y: (O.y + B.y) / 2 };
+    const dMQ = dist(M.x, M.y, Q.x, Q.y);
+    const N = { x: M.x + dMQ, y: O.y };
+    const side = dist(Q.x, Q.y, N.x, N.y);
+    const P = [90, 162, 234, 306, 18].map(d => V(d * Math.PI / 180));
+    const mUp = { x: O.x, y: O.y - 215 }, mDn = { x: O.x, y: O.y + 215 };
+    const mUp2 = { x: M.x, y: M.y - 95 }, mDn2 = { x: M.x, y: M.y + 95 };
+    return [
+      { t: "paper", grid: "carreaux", msg: "Tracer un pentagone régulier inscrit dans un cercle — construction classique au compas." },
+      { t: "point", x: O.x, y: O.y, label: "O", msg: "On place le centre O." },
+      { t: "show", i: "compas", msg: "On sort le compas." },
+      { t: "pose", i: "compas", props: { x: O.x, y: O.y, r: R, tip: 0 }, msg: "On pique en O." },
+      { t: "circle", cx: O.x, cy: O.y, r: R, msg: "On trace le cercle de centre O." },
+      { t: "hide", i: "compas", msg: "On range le compas." },
+      { t: "show", i: "regle", msg: "On prend la règle." },
+      { t: "pose", i: "regle", props: { x: O.x, y: O.y + 17, angle: 0 }, msg: "On aligne la règle horizontalement par O." },
+      { t: "segment", x1: B.x, y1: B.y, x2: A.x, y2: A.y, msg: "On trace le diamètre [AB]." },
+      { t: "point", x: A.x, y: A.y, label: "A", msg: "Extrémité A." },
+      { t: "point", x: B.x, y: B.y, label: "B", msg: "Extrémité B." },
+      { t: "hide", i: "regle", msg: "On range la règle." },
+      { t: "show", i: "compas", msg: "On reprend le compas pour la médiatrice de [AB]." },
+      { t: "pose", i: "compas", props: { x: A.x, y: A.y, r: 200, tip: -Math.PI / 2 }, msg: "Ouverture > moitié de AB, on pique en A." },
+      { t: "arc", cx: A.x, cy: A.y, r: 200, a1: Math.atan2(mUp.y - A.y, mUp.x - A.x) - 0.3, a2: Math.atan2(mUp.y - A.y, mUp.x - A.x) + 0.3, msg: "Arc au-dessus." },
+      { t: "arc", cx: A.x, cy: A.y, r: 200, a1: Math.atan2(mDn.y - A.y, mDn.x - A.x) - 0.3, a2: Math.atan2(mDn.y - A.y, mDn.x - A.x) + 0.3, msg: "Arc en dessous." },
+      { t: "pose", i: "compas", props: { x: B.x, y: B.y, r: 200, tip: -Math.PI / 2 }, msg: "Même ouverture, on pique en B." },
+      { t: "arc", cx: B.x, cy: B.y, r: 200, a1: Math.atan2(mUp.y - B.y, mUp.x - B.x) - 0.3, a2: Math.atan2(mUp.y - B.y, mUp.x - B.x) + 0.3, msg: "Arc au-dessus : il croise le premier." },
+      { t: "arc", cx: B.x, cy: B.y, r: 200, a1: Math.atan2(mDn.y - B.y, mDn.x - B.x) - 0.3, a2: Math.atan2(mDn.y - B.y, mDn.x - B.x) + 0.3, msg: "Arc en dessous." },
+      { t: "croix", x: mUp.x, y: mUp.y, msg: "Croisement au-dessus." },
+      { t: "croix", x: mDn.x, y: mDn.y, msg: "Croisement en dessous." },
+      { t: "hide", i: "compas", msg: "On range le compas." },
+      { t: "show", i: "regle", msg: "On trace la médiatrice." },
+      { t: "segment", x1: mUp.x, y1: mUp.y, x2: mDn.x, y2: mDn.y, msg: "La médiatrice de [AB] passe par O : c'est la perpendiculaire au diamètre." },
+      { t: "point", x: Q.x, y: Q.y, label: "Q", msg: "Elle coupe le cercle en Q : premier sommet du pentagone." },
+      { t: "hide", i: "regle", msg: "On range la règle." },
+      { t: "show", i: "compas", msg: "On cherche maintenant le milieu de [OB]." },
+      { t: "pose", i: "compas", props: { x: O.x, y: O.y, r: 110, tip: Math.PI / 2 }, msg: "Ouverture > moitié de OB, on pique en O." },
+      { t: "arc", cx: O.x, cy: O.y, r: 110, a1: Math.atan2(mUp2.y - O.y, mUp2.x - O.x) - 0.35, a2: Math.atan2(mUp2.y - O.y, mUp2.x - O.x) + 0.35, msg: "Petit arc au-dessus de OB." },
+      { t: "arc", cx: O.x, cy: O.y, r: 110, a1: Math.atan2(mDn2.y - O.y, mDn2.x - O.x) - 0.35, a2: Math.atan2(mDn2.y - O.y, mDn2.x - O.x) + 0.35, msg: "Petit arc en dessous." },
+      { t: "pose", i: "compas", props: { x: B.x, y: B.y, r: 110, tip: Math.PI / 2 }, msg: "Même ouverture, on pique en B." },
+      { t: "arc", cx: B.x, cy: B.y, r: 110, a1: Math.atan2(mUp2.y - B.y, mUp2.x - B.x) - 0.35, a2: Math.atan2(mUp2.y - B.y, mUp2.x - B.x) + 0.35, msg: "Arcs croisés." },
+      { t: "arc", cx: B.x, cy: B.y, r: 110, a1: Math.atan2(mDn2.y - B.y, mDn2.x - B.x) - 0.35, a2: Math.atan2(mDn2.y - B.y, mDn2.x - B.x) + 0.35, msg: "Et en dessous." },
+      { t: "croix", x: mUp2.x, y: mUp2.y, msg: "Deux croisements." },
+      { t: "croix", x: mDn2.x, y: mDn2.y, msg: "" },
+      { t: "hide", i: "compas", msg: "" },
+      { t: "show", i: "regle", msg: "On trace la médiatrice de [OB]." },
+      { t: "segment", x1: mUp2.x, y1: mUp2.y, x2: mDn2.x, y2: mDn2.y, msg: "Elle coupe [OB] en son milieu." },
+      { t: "point", x: M.x, y: M.y, label: "M", msg: "M = milieu de [OB]." },
+      { t: "hide", i: "regle", msg: "" },
+      { t: "show", i: "compas", msg: "Le coup de compas décisif." },
+      { t: "pose", i: "compas", props: { x: M.x, y: M.y, r: dMQ, tip: -Math.PI / 4 }, msg: "On prend l'écartement de M à Q." },
+      { t: "arc", cx: M.x, cy: M.y, r: dMQ, a1: Math.atan2(Q.y - M.y, Q.x - M.x) - 0.05, a2: Math.atan2(O.y - M.y, O.x - M.x) + 0.1, msg: "On le reporte sur le diamètre [AB]." },
+      { t: "croix", x: N.x, y: N.y, msg: "Le point N est obtenu." },
+      { t: "point", x: N.x, y: N.y, label: "N", msg: "N est sur le diamètre." },
+      { t: "pose", i: "compas", props: { x: Q.x, y: Q.y, r: side, tip: Math.PI / 4 }, msg: "On prend maintenant l'écartement QN : c'est exactement le côté du pentagone !" },
+      { t: "arc", cx: Q.x, cy: Q.y, r: side, a1: Math.atan2(N.y - Q.y, N.x - Q.x) - 0.35, a2: Math.atan2(N.y - Q.y, N.x - Q.x) + 0.35, msg: "On vérifie l'écartement QN." },
+    ].concat(
+      P.slice(1).flatMap((v, i) => {
+        const a = Math.atan2(v.y - P[i].y, v.x - P[i].x);
+        return [
+          { t: "pose", i: "compas", props: { x: P[i].x, y: P[i].y, r: side, tip: a }, msg: `On pique le compas sur le sommet ${i ? i : 'Q'} et on reporte le côté.` },
+          { t: "arc", cx: P[i].x, cy: P[i].y, r: side, a1: a - 0.3, a2: a + 0.3, msg: "Nouveau sommet sur le cercle." },
+          { t: "point", x: v.x, y: v.y, label: "", msg: `Sommet ${i + 2} / 5.` },
+        ];
+      }),
+      [
+        { t: "hide", i: "compas", msg: "Les 5 sommets sont placés." },
+        { t: "show", i: "regle", msg: "On relie à la règle." },
+      ],
+      P.flatMap((p, i) => {
+        const q = P[(i + 1) % 5];
+        const a = Math.atan2(q.y - p.y, q.x - p.x);
+        return [
+          { t: "pose", i: "regle", props: { x: (p.x + q.x) / 2 - 14 * Math.sin(a), y: (p.y + q.y) / 2 + 14 * Math.cos(a), angle: a }, msg: `On aligne le côté ${i + 1}.` },
+          { t: "segment", x1: p.x, y1: p.y, x2: q.x, y2: q.y, msg: `On trace le côté ${i + 1} / 5.` },
+        ];
+      }),
+      [
+        { t: "hide", i: "regle", msg: "On range la règle." },
+        { t: "text", x: 370, y: 160, str: "Pentagone régulier", msg: "Terminé : 5 côtés égaux — la construction du compas depuis l'Antiquité." },
+      ],
+    );
+  },
 };

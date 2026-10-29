@@ -1282,6 +1282,8 @@ const BIBLIO_EXEMPLES = [
   ["Perpendiculaire à d hors de d (compas)", "perpCompas", "Parallèles et perpendiculaires"],
   ["Parallèle à d par un point (équerre)", "parallele", "Parallèles et perpendiculaires"],
   ["Perpendiculaire à la règle-équerre", "perpendiculaire", "Parallèles et perpendiculaires"],
+  ["Hexagone régulier au compas", "hexagone", "Polygones"],
+  ["Pentagone régulier au compas", "pentagone", "Polygones"],
 ];
 const BIBLIO_KEY = "iep_biblio_v1";
 function getBiblio() {
