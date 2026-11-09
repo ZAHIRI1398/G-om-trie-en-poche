@@ -379,7 +379,8 @@ function hitText(wx, wy) {
     const o = S.objects[i];
     if (o.type !== "text") continue;
     const fs = o.fs || 15, w = o._w || (o.str ? o.str.length : 1) * fs * 0.6;
-    if (wx > o.x - 12 && wx < o.x + w + 12 && wy > o.y - fs * 1.5 && wy < o.y + fs * 0.7) return o;
+    if (wx > o.x - 12 && wx < o.x + w + 12 && wy > o.y - fs * 1.5 &&
+        wy < o.y + richTextExtraHeight(o.str, fs) + fs * 0.7) return o;
   }
   return null;
 }
@@ -395,7 +396,7 @@ function hitObject(wx, wy) {
     }
     if ((o.type === "point" || o.type === "croix") && dist(wx, wy, o.x, o.y) < 10) return i;
     if (o.type === "text" && wx > o.x - 6 && wx < o.x + (o._w || o.str.length * (o.fs || 15) * 0.6) + 6 &&
-        wy > o.y - (o.fs || 15) * 1.1 && wy < o.y + (o.fs || 15) * 0.4) return i;
+        wy > o.y - (o.fs || 15) * 1.1 && wy < o.y + richTextExtraHeight(o.str, o.fs || 15) + (o.fs || 15) * 0.4) return i;
     if (o.type === "cadre" && wx > o.x - 5 && wx < o.x + o.w + 5 && wy > o.y - 5 && wy < o.y + o.h + 5) return i;
     if (o.type === "stroke" && o.pts.some(pt => dist(wx, wy, pt[0], pt[1]) < 6)) return i;
     if (o.type === "polygone") {
@@ -835,6 +836,7 @@ function openTextInput(x, y, obj = null) {
   textInput.style.fontSize = fs + "px";
   textInput.style.color = obj ? (obj.c || S.ink) : S.ink;
   textPanel.classList.remove("hidden");
+  fitTextInput();
   textInput._pos = { x, y };
   textInput._edit = obj;
   setTimeout(() => { textInput.focus(); textInput.select(); }, 0);
@@ -855,9 +857,12 @@ function commitTextInput() {
   }
   textInput._pos = null; textInput._edit = null;
 }
+// la zone de saisie grandit avec le nombre de lignes
+function fitTextInput() { textInput.rows = Math.max(1, textInput.value.split("\n").length); }
+textInput.addEventListener("input", fitTextInput);
 textInput.addEventListener("keydown", e => {
   e.stopPropagation();
-  if (e.key === "Enter") commitTextInput();
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitTextInput(); }   // Maj+Entrée : nouvelle ligne
   else if (e.key === "Escape") { textInput.value = ""; commitTextInput(); }
 });
 textInput.addEventListener("blur", commitTextInput);
@@ -869,6 +874,7 @@ function textInsert(snippet) {
   const s = textInput.selectionStart == null ? textInput.value.length : textInput.selectionStart;
   const e = textInput.selectionEnd == null ? s : textInput.selectionEnd;
   textInput.value = textInput.value.slice(0, s) + snippet + textInput.value.slice(e);
+  fitTextInput();
   // si le jeton contient "{}" vide, placer le curseur dedans (ex. \frac{}{})
   const hole = snippet.indexOf("{}");
   const pos = hole >= 0 ? s + hole + 1 : s + snippet.length;
