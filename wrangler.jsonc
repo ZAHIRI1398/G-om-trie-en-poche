@@ -6,6 +6,8 @@
   "name": "g-om-trie-en-poche",
   "compatibility_date": "2025-10-01",
   "main": "site-worker.js",
+  // previews : requis par « wrangler preview » (builds des branches / PR)
+  "previews": {},
   "assets": {
     "directory": "./",
     "binding": "ASSETS",

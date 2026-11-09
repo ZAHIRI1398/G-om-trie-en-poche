@@ -455,8 +455,13 @@ function abaqueSteps(cfg) {
     (c.zeros || []).forEach((j, k) => steps.push({ t: "text", x: cx(colX(j) + W / 2, "0", fsD), y: yb, str: "0", fs: fsD, c: "#1e8449",
       msg: k ? undefined : "On complète les colonnes vides par des zéros." }));
     steps.push({ t: "croix", x: colX(c.from + 1) - 2, y: yb + 2, msg: "On barre l'ancienne virgule…" });
-    steps.push({ t: "text", x: colX(c.to + 1) - 6, y: yb + 6, str: ",", fs: 40, c: "#1e8449",
-      msg: "… et on la place après la colonne de l'unité demandée." });
+    const last = Math.max(...c.digits.map(d => d[0]), ...(c.zeros || []));
+    if (c.to < last)
+      steps.push({ t: "text", x: colX(c.to + 1) - 6, y: yb + 6, str: ",", fs: 40, c: "#1e8449",
+        msg: "… et on la place après la colonne de l'unité demandée." });
+    else    // nombre entier : pas de virgule, on souligne le chiffre des unités
+      steps.push({ t: "segment", x1: colX(c.to) + 6, y1: yb + 8, x2: colX(c.to + 1) - 6, y2: yb + 8, c: "#1e8449",
+        msg: "… le chiffre des unités est maintenant dans la colonne de l'unité demandée : le nombre est entier, pas de virgule." });
     steps.push({ t: "text", x: X0 + 330, y: yQ, str: "→ " + c.res, fs: 20, c: "#1e8449", msg: "On lit le résultat : " + c.res + "." });
   });
   return steps.map(st => { if (st.msg === undefined) delete st.msg; return st; });
