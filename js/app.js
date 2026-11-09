@@ -1284,6 +1284,10 @@ const BIBLIO_EXEMPLES = [
   ["Perpendiculaire à la règle-équerre", "perpendiculaire", "Parallèles et perpendiculaires"],
   ["Hexagone régulier au compas", "hexagone", "Polygones"],
   ["Pentagone régulier au compas", "pentagone", "Polygones"],
+  ["Abaque des longueurs", "abaqueLongueur", "Grandeurs (abaques)"],
+  ["Abaque des capacités", "abaqueCapacite", "Grandeurs (abaques)"],
+  ["Abaque des aires", "abaqueAire", "Grandeurs (abaques)"],
+  ["Abaque des volumes", "abaqueVolume", "Grandeurs (abaques)"],
 ];
 const BIBLIO_KEY = "iep_biblio_v1";
 function getBiblio() {
