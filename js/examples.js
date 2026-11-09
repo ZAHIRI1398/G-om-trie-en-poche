@@ -335,4 +335,129 @@ const EXAMPLES = {
       ],
     );
   },
+
+  /* Abaques (tableaux de conversion) des grandeurs */
+  abaqueLongueur() {
+    return abaqueSteps({
+      nom: "longueurs", fill: "#4a90d9",
+      units: ["km", "hm", "dam", "m", "dm", "cm", "mm"], sub: 1,
+      intro: "Placer des longueurs dans l'abaque pour les convertir.",
+      regle: "Chaque unité vaut 10 fois l'unité qui est à sa droite.",
+      conv: [
+        { enonce: "3,45 m = … cm", digits: [[3, "3"], [4, "4"], [5, "5"]], from: 3, to: 5,
+          place: "Le chiffre des unités (3) va dans la colonne du mètre, puis 4 en dm et 5 en cm.",
+          res: "3,45 m = 345 cm" },
+        { enonce: "2,7 km = … m", digits: [[0, "2"], [1, "7"]], zeros: [2, 3], from: 0, to: 3,
+          place: "Le 2 va dans la colonne du kilomètre, le 7 en hm.",
+          res: "2,7 km = 2 700 m" },
+      ],
+    });
+  },
+
+  abaqueCapacite() {
+    return abaqueSteps({
+      nom: "capacités", fill: "#27ae60",
+      units: ["kl", "hl", "dal", "l", "dl", "cl", "ml"], sub: 1,
+      intro: "Placer des capacités dans l'abaque pour les convertir.",
+      regle: "Chaque unité vaut 10 fois l'unité qui est à sa droite.",
+      conv: [
+        { enonce: "1,5 l = … cl", digits: [[3, "1"], [4, "5"]], zeros: [5], from: 3, to: 5,
+          place: "Le chiffre des unités (1) va dans la colonne du litre, puis 5 en dl.",
+          res: "1,5 l = 150 cl" },
+        { enonce: "250 ml = … l", digits: [[4, "2"], [5, "5"], [6, "0"]], zeros: [3], from: 6, to: 3,
+          place: "Le chiffre des unités (0) va dans la colonne du millilitre, puis 5 en cl et 2 en dl.",
+          res: "250 ml = 0,25 l" },
+      ],
+    });
+  },
+
+  abaqueAire() {
+    return abaqueSteps({
+      nom: "aires", fill: "#e67e22",
+      units: ["km²", "hm²", "dam²", "m²", "dm²", "cm²", "mm²"], sub: 2,
+      extra: { label: "agraires", cells: [[3, "ha"], [5, "a"], [7, "ca"]] },
+      intro: "Placer des aires dans l'abaque pour les convertir.",
+      regle: "Chaque unité vaut 100 fois l'unité qui est à sa droite : 2 colonnes par unité.",
+      extraMsg: "Mesures agraires : 1 ha = 1 hm², 1 a = 1 dam², 1 ca = 1 m².",
+      conv: [
+        { enonce: "3,5 m² = … dm²", digits: [[7, "3"], [8, "5"]], zeros: [9], from: 7, to: 9,
+          place: "Le chiffre des unités (3) va dans la colonne de droite du m², puis 5 dans la 1re colonne du dm².",
+          res: "3,5 m² = 350 dm²" },
+        { enonce: "4,2 ha = … m²", digits: [[3, "4"], [4, "2"]], zeros: [5, 6, 7], from: 3, to: 7,
+          place: "1 ha = 1 hm² : le 4 va dans la colonne de droite du hm² (ha), le 2 juste après.",
+          res: "4,2 ha = 42 000 m²" },
+      ],
+    });
+  },
+
+  abaqueVolume() {
+    return abaqueSteps({
+      nom: "volumes", fill: "#8e44ad",
+      units: ["km³", "hm³", "dam³", "m³", "dm³", "cm³", "mm³"], sub: 3,
+      extra: { label: "capacités", cells: [[11, "kl"], [12, "hl"], [13, "dal"], [14, "l"], [15, "dl"], [16, "cl"], [17, "ml"]] },
+      intro: "Placer des volumes dans l'abaque pour les convertir.",
+      regle: "Chaque unité vaut 1 000 fois l'unité qui est à sa droite : 3 colonnes par unité.",
+      extraMsg: "Lien avec les capacités : 1 m³ = 1 kl, 1 dm³ = 1 l, 1 cm³ = 1 ml.",
+      conv: [
+        { enonce: "2,4 dm³ = … cm³", digits: [[14, "2"], [15, "4"]], zeros: [16, 17], from: 14, to: 17,
+          place: "Le chiffre des unités (2) va dans la dernière colonne du dm³, puis 4 dans la 1re colonne du cm³.",
+          res: "2,4 dm³ = 2 400 cm³" },
+        { enonce: "1,5 m³ = … l", digits: [[11, "1"], [12, "5"]], zeros: [13, 14], from: 11, to: 14,
+          place: "Le chiffre des unités (1) va dans la dernière colonne du m³ (kl), puis 5 en hl.",
+          res: "1,5 m³ = 1 500 l" },
+      ],
+    });
+  },
 };
+
+/* Abaque : en-tête des unités (sous-colonnes pour aires et volumes),
+   ligne optionnelle de correspondances, puis une ligne par conversion :
+   placement des chiffres, virgule, zéros, déplacement de la virgule. */
+function abaqueSteps(cfg) {
+  const X0 = 70, WT = 700, n = cfg.units.length, sub = cfg.sub;
+  const W = WT / (n * sub), UW = W * sub;
+  const yH = 110, hH = 40, hE = cfg.extra ? 30 : 0, hR = 50;
+  const yE = yH + hH, yB = yE + hE, nr = cfg.conv.length, yEnd = yB + hR * nr;
+  const cx = (x, str, fs) => x - str.length * fs * 0.27;     // centrage approximatif
+  const colX = j => X0 + j * W;
+  const steps = [
+    { t: "paper", grid: "blanc", msg: cfg.intro },
+    { t: "cadre", x: X0, y: 30, w: WT, h: 50, fill: cfg.fill, msg: "Abaque des " + cfg.nom + "." },
+    { t: "text", x: cx(X0 + WT / 2, "Abaque des " + cfg.nom, 24), y: 63, str: "Abaque des " + cfg.nom, fs: 24 },
+  ];
+  cfg.units.forEach((u, i) => {
+    steps.push({ t: "cadre", x: X0 + i * UW, y: yH, w: UW, h: hH, fill: cfg.fill,
+      msg: i ? undefined : "On écrit les unités, de la plus grande à la plus petite." });
+    steps.push({ t: "text", x: cx(X0 + i * UW + UW / 2, u, 20), y: yH + 27, str: u, fs: 20 });
+  });
+  steps.push({ t: "cadre", x: X0, y: yE, w: WT, h: yEnd - yE, fill: "#ffffff", msg: cfg.regle });
+  for (let i = 1; i < n; i++)
+    steps.push({ t: "segment", x1: X0 + i * UW, y1: yE, x2: X0 + i * UW, y2: yEnd });
+  if (sub > 1) for (let j = 1; j < n * sub; j++) if (j % sub)
+    steps.push({ t: "segment", x1: colX(j), y1: yE, x2: colX(j), y2: yEnd, c: "#b0b8c4",
+      msg: j === 1 ? "Chaque unité est partagée en " + sub + " colonnes : un seul chiffre par colonne." : undefined });
+  if (cfg.extra) {
+    steps.push({ t: "segment", x1: X0, y1: yB, x2: X0 + WT, y2: yB, msg: cfg.extraMsg });
+    for (const [j, lab] of cfg.extra.cells)
+      steps.push({ t: "text", x: cx(colX(j) + W / 2, lab, 15), y: yE + 21, str: lab, fs: 15, c: "#c0392b" });
+  }
+  for (let r = 1; r < nr; r++)
+    steps.push({ t: "segment", x1: X0, y1: yB + r * hR, x2: X0 + WT, y2: yB + r * hR });
+
+  const fsD = sub === 3 ? 20 : 24;
+  cfg.conv.forEach((c, r) => {
+    const yb = yB + r * hR + 34, yQ = yEnd + 45 + r * 70, num = "①②③④"[r];
+    steps.push({ t: "text", x: X0, y: yQ, str: num + " " + c.enonce, fs: 20, msg: "Conversion " + num + " : " + c.enonce });
+    c.digits.forEach(([j, d], k) => steps.push({ t: "text", x: cx(colX(j) + W / 2, d, fsD), y: yb, str: d, fs: fsD,
+      msg: k ? undefined : c.place }));
+    steps.push({ t: "text", x: colX(c.from + 1) - 6, y: yb + 6, str: ",", fs: 40, c: "#c0392b",
+      msg: "La virgule se place juste après le chiffre des unités." });
+    (c.zeros || []).forEach((j, k) => steps.push({ t: "text", x: cx(colX(j) + W / 2, "0", fsD), y: yb, str: "0", fs: fsD, c: "#1e8449",
+      msg: k ? undefined : "On complète les colonnes vides par des zéros." }));
+    steps.push({ t: "croix", x: colX(c.from + 1) - 2, y: yb + 2, msg: "On barre l'ancienne virgule…" });
+    steps.push({ t: "text", x: colX(c.to + 1) - 6, y: yb + 6, str: ",", fs: 40, c: "#1e8449",
+      msg: "… et on la place après la colonne de l'unité demandée." });
+    steps.push({ t: "text", x: X0 + 330, y: yQ, str: "→ " + c.res, fs: 20, c: "#1e8449", msg: "On lit le résultat : " + c.res + "." });
+  });
+  return steps.map(st => { if (st.msg === undefined) delete st.msg; return st; });
+}
