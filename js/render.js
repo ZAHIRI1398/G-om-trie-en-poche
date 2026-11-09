@@ -250,14 +250,27 @@ function rtExec(ctx, s, x, y, fs, draw) {
   return cx - x;
 }
 
-// Point d'entrée : dessine le texte enrichi, retourne sa largeur.
+// Interligne : plus grand si le texte contient une fraction.
+function rtLineHeight(str, fs) {
+  return fs * (/\\d?frac/.test(str) ? 2.1 : 1.35);
+}
+// Point d'entrée : dessine le texte enrichi (« \n » = retour à la ligne),
+// retourne la largeur de la ligne la plus longue.
 function drawRichText(ctx, str, x, y, fs) {
   ctx.textAlign = "left";
-  return rtExec(ctx, str, x, y, fs, true);
+  var lines = String(str).split("\n"), lh = rtLineHeight(str, fs), w = 0;
+  for (var i = 0; i < lines.length; i++) w = Math.max(w, rtExec(ctx, lines[i], x, y + i * lh, fs, true));
+  return w;
 }
 // Mesure sans dessiner.
 function measureRichText(ctx, str, fs) {
-  return rtExec(ctx, str, 0, 0, fs, false);
+  var lines = String(str).split("\n"), w = 0;
+  for (var i = 0; i < lines.length; i++) w = Math.max(w, rtExec(ctx, lines[i], 0, 0, fs, false));
+  return w;
+}
+// Hauteur ajoutée par les lignes après la première.
+function richTextExtraHeight(str, fs) {
+  return (String(str).split("\n").length - 1) * rtLineHeight(str, fs);
 }
 
 function drawObjects(ctx, objects) {
